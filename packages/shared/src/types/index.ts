@@ -20,3 +20,6 @@ export type StockLedgerItemType = 'raw_material' | 'finished_variant';
 
 // CRM Lead Stages
 export type LeadStage = 'new' | 'contacted' | 'sample_sent' | 'negotiation' | 'converted' | 'lost';
+
+export * from './database';
+
