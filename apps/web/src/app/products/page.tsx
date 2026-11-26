@@ -45,7 +45,8 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
     .select(`
       *,
       category:categories(name, slug),
-      variants:product_variants(*)
+      variants:product_variants(*),
+      images:product_images(path, sort)
     `)
     .eq('is_active', true);
 
@@ -306,23 +307,38 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
                     className="group rounded-2xl bg-surface-alt border border-border hover:border-primary/70 hover:shadow-lg transition-all flex flex-col justify-between overflow-hidden"
                   >
                     {/* Visual Container */}
-                    <div className="relative aspect-4/5 bg-gradient-to-br from-surface to-surface-alt border-b border-border flex flex-col items-center justify-center p-6 text-center">
+                    <Link
+                      href={`/products/${product.slug}`}
+                      className="relative aspect-4/5 bg-surface border-b border-border overflow-hidden block"
+                    >
                       {discount > 0 && (
-                        <span className="absolute top-3 left-3 px-2 py-0.5 rounded text-3xs font-extrabold uppercase bg-danger text-white shadow-xs">
+                        <span className="absolute top-3 left-3 z-10 px-2 py-0.5 rounded text-3xs font-extrabold uppercase bg-danger text-white shadow-xs">
                           {discount}% OFF
                         </span>
                       )}
 
-                      <span className="absolute top-3 right-3 px-2 py-0.5 rounded text-3xs font-bold uppercase bg-surface text-muted border border-border">
+                      <span className="absolute top-3 right-3 z-10 px-2 py-0.5 rounded text-3xs font-bold uppercase bg-surface/90 backdrop-blur-xs text-text border border-border">
                         {product.category?.name || 'Denim'}
                       </span>
 
-                      <div className="w-20 h-20 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary mb-3 group-hover:scale-105 transition-transform">
-                        <Layers className="w-10 h-10" />
-                      </div>
-                      <span className="text-xs font-bold text-text line-clamp-1">{product.name}</span>
-                      <span className="text-3xs text-muted font-medium mt-1">100% Ring-Spun Cotton</span>
-                    </div>
+                      {product.images && product.images.length > 0 ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={product.images[0].path}
+                          alt={product.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-gradient-to-br from-surface to-surface-alt">
+                          <div className="w-20 h-20 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary mb-3 group-hover:scale-105 transition-transform">
+                            <Layers className="w-10 h-10" />
+                          </div>
+                          <span className="text-xs font-bold text-text line-clamp-1">{product.name}</span>
+                          <span className="text-3xs text-muted font-medium mt-1">100% Ring-Spun Cotton</span>
+                        </div>
+                      )}
+                    </Link>
 
                     {/* Details */}
                     <div className="p-5 flex-1 flex flex-col justify-between space-y-4">

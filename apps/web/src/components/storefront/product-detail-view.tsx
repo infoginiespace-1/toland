@@ -22,12 +22,14 @@ import {
 interface ProductDetailViewProps {
   product: any;
   variants: any[];
+  images?: any[];
 }
 
-export function ProductDetailView({ product, variants }: ProductDetailViewProps) {
+export function ProductDetailView({ product, variants, images = [] }: ProductDetailViewProps) {
   const router = useRouter();
   const { addToCart } = useCart();
 
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [selectedVariantId, setSelectedVariantId] = useState<string>(
     variants[0]?.id || ''
   );
@@ -42,6 +44,7 @@ export function ProductDetailView({ product, variants }: ProductDetailViewProps)
 
   const currentPrice = selectedVariant?.price || product.base_price;
   const isOutOfStock = (selectedVariant?.stock_qty || 0) <= 0;
+  const currentImage = images[activeImageIndex]?.path || images[0]?.path || '';
 
   const handleAddToCart = () => {
     if (!selectedVariant) return;
@@ -57,7 +60,7 @@ export function ProductDetailView({ product, variants }: ProductDetailViewProps)
         wash: selectedVariant.wash || 'Standard',
         price: currentPrice,
         mrp: product.mrp || currentPrice,
-        image: '',
+        image: currentImage,
         stockQty: selectedVariant.stock_qty || 50,
       },
       quantity
@@ -100,24 +103,63 @@ export function ProductDetailView({ product, variants }: ProductDetailViewProps)
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
         {/* Left: Product Imagery / Visual Showcase */}
         <div className="space-y-4">
-          <div className="relative aspect-4/5 rounded-3xl bg-gradient-to-br from-surface to-surface-alt border border-border p-8 flex flex-col items-center justify-center text-center shadow-xs overflow-hidden">
+          {/* Main Visual Display */}
+          <div className="relative aspect-4/5 rounded-3xl bg-surface border border-border shadow-md overflow-hidden group">
             {discountPercent > 0 && (
-              <span className="absolute top-4 left-4 px-3 py-1 rounded-full text-xs font-extrabold uppercase bg-danger text-white shadow-sm">
+              <span className="absolute top-4 left-4 z-10 px-3 py-1 rounded-full text-xs font-extrabold uppercase bg-danger text-white shadow-sm">
                 {discountPercent}% OFF
               </span>
             )}
 
-            <span className="absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-bold uppercase bg-surface text-muted border border-border">
+            <span className="absolute top-4 right-4 z-10 px-3 py-1 rounded-full text-xs font-bold uppercase bg-surface/90 backdrop-blur-xs text-text border border-border">
               {product.category?.name || 'Denim'}
             </span>
 
-            <div className="w-32 h-32 rounded-3xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary mb-4 shadow-inner">
-              <Layers className="w-16 h-16" />
-            </div>
-
-            <h2 className="text-lg font-black text-text max-w-sm">{product.name}</h2>
-            <p className="text-xs text-muted mt-1">Authentic Sheikhpura In-House Wash</p>
+            {currentImage ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={currentImage}
+                alt={product.name}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              />
+            ) : (
+              <div className="w-full h-full p-8 flex flex-col items-center justify-center text-center bg-gradient-to-br from-surface to-surface-alt">
+                <div className="w-32 h-32 rounded-3xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary mb-4 shadow-inner">
+                  <Layers className="w-16 h-16" />
+                </div>
+                <h2 className="text-lg font-black text-text max-w-sm">{product.name}</h2>
+                <p className="text-xs text-muted mt-1">Authentic Sheikhpura In-House Wash</p>
+              </div>
+            )}
           </div>
+
+          {/* Interactive Thumbnails Gallery */}
+          {images && images.length > 1 && (
+            <div className="grid grid-cols-4 gap-3">
+              {images.map((img: any, idx: number) => {
+                const isActive = idx === activeImageIndex;
+                return (
+                  <button
+                    key={img.id || idx}
+                    type="button"
+                    onClick={() => setActiveImageIndex(idx)}
+                    className={`relative aspect-square rounded-2xl overflow-hidden border-2 transition-all cursor-pointer ${
+                      isActive
+                        ? 'border-primary ring-2 ring-primary/20 shadow-sm scale-102'
+                        : 'border-border hover:border-primary/50 opacity-70 hover:opacity-100'
+                    }`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={img.path}
+                      alt={`${product.name} angle ${idx + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {/* Value Highlights */}
           <div className="grid grid-cols-3 gap-3 text-center text-xs text-muted">

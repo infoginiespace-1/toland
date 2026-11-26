@@ -3,6 +3,7 @@ import makeWASocket, {
   fetchLatestBaileysVersion,
   proto,
   WASocket,
+  Browsers,
 } from '@whiskeysockets/baileys';
 import QRCode from 'qrcode';
 import pino from 'pino';
@@ -30,6 +31,16 @@ export class BaileysWhatsAppService implements WhatsAppProvider {
   public formatJid(phone: string): string {
     const clean = phone.replace(/[^0-9]/g, '');
     return clean.includes('@s.whatsapp.net') ? clean : `${clean}@s.whatsapp.net`;
+  }
+
+  // Request 8-digit Pairing Code alternative to QR
+  public async requestPairingCode(phone: string): Promise<string> {
+    if (!this.sock) {
+      throw new Error('WhatsApp socket is not initialized');
+    }
+    const clean = phone.replace(/[^0-9]/g, '');
+    const code = await this.sock.requestPairingCode(clean);
+    return code;
   }
 
   // Update session record in Postgres for admin panel Realtime visibility
@@ -80,9 +91,11 @@ export class BaileysWhatsAppService implements WhatsAppProvider {
         logger: pino({ level: 'silent' }),
         printQRInTerminal: false,
         auth: state,
+        browser: Browsers.macOS('Desktop'),
         syncFullHistory: false,
         connectTimeoutMs: 60000,
         keepAliveIntervalMs: 25000,
+        defaultQueryTimeoutMs: 60000,
       });
 
       // Handle credentials update (token rotation, new keys)

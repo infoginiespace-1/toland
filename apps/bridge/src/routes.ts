@@ -69,6 +69,20 @@ router.get('/qr', async (req: Request, res: Response) => {
   }
 });
 
+// 3.1. POST /pair-code (Request 8-digit Pairing Code for phone linking)
+router.post('/pair-code', async (req: Request, res: Response) => {
+  try {
+    const { phone } = req.body;
+    if (!phone) {
+      return res.status(400).json({ error: 'Phone number is required' });
+    }
+    const code = await whatsappService.requestPairingCode(phone);
+    res.json({ success: true, code });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || 'Failed to request pairing code' });
+  }
+});
+
 // 4. POST /send-otp (Called by send-sms-hook Edge Function)
 const sendOtpSchema = z.object({
   phone: z.string().min(10, 'Valid phone number required'),

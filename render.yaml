@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: toland-whatsapp-bridge
+    env: node
+    plan: starter
+    buildCommand: pnpm --filter "@toland/bridge..." install && pnpm --filter "@toland/bridge" build
+    startCommand: node apps/bridge/dist/index.js
+    healthCheckPath: /status
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: WHATSAPP_BRIDGE_SECRET
+        sync: false

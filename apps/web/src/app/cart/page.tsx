@@ -127,8 +127,13 @@ export default function CartPage() {
               className="p-4 sm:p-5 rounded-2xl bg-surface-alt border border-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs"
             >
               <div className="flex items-center gap-4">
-                <div className="w-16 h-20 rounded-xl bg-surface border border-border flex items-center justify-center text-primary shrink-0">
-                  <Layers className="w-8 h-8" />
+                <div className="w-16 h-20 rounded-xl bg-surface border border-border flex items-center justify-center text-primary shrink-0 overflow-hidden">
+                  {item.image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <Layers className="w-8 h-8" />
+                  )}
                 </div>
 
                 <div className="space-y-1">

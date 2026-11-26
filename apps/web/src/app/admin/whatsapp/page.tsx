@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import { DevicePairingCard } from '@/components/admin/whatsapp/device-pairing-card';
 import {
   MessageSquare,
   ArrowLeft,
@@ -71,6 +72,10 @@ export default async function AdminWhatsAppPage() {
 
   const isConnected = session?.status === 'connected';
   const isQrReady = session?.status === 'qr_ready';
+  const isQrExpired =
+    isQrReady &&
+    session?.updated_at &&
+    Date.now() - new Date(session.updated_at).getTime() > 90000;
   const isQueuePaused = settings?.queue_paused ?? false;
 
   return (
@@ -117,56 +122,8 @@ export default async function AdminWhatsAppPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* Top Status & Anti-Ban Controls Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* 1. Device Pairing & Status Card */}
-          <div className="bg-surface-alt border border-border rounded-xl p-6 shadow-sm flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-bold uppercase tracking-wider text-muted">Baileys Service Status</h2>
-                <Smartphone className="w-5 h-5 text-primary" />
-              </div>
-
-              {isConnected ? (
-                <div className="space-y-4 py-2">
-                  <div className="p-4 rounded-lg bg-success/10 border border-success/20 flex items-center gap-3">
-                    <CheckCircle2 className="w-8 h-8 text-success shrink-0" />
-                    <div>
-                      <div className="text-sm font-bold text-text">WhatsApp Device Connected</div>
-                      <div className="text-xs text-muted">Session ID: default · Phone: +{session.connected_phone}</div>
-                    </div>
-                  </div>
-                  <div className="text-xs text-muted space-y-1">
-                    <div>Last Activity: {session.last_seen ? new Date(session.last_seen).toLocaleString() : 'Just now'}</div>
-                    <div>Postgres Session Store: Persistent across Docker redeploys</div>
-                  </div>
-                </div>
-              ) : isQrReady && session?.qr ? (
-                <div className="text-center py-2 space-y-3">
-                  <div className="inline-block p-3 bg-white rounded-lg border border-border shadow-sm">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={session.qr}
-                      alt="WhatsApp Web QR Code"
-                      className="w-48 h-48 mx-auto"
-                    />
-                  </div>
-                  <p className="text-xs text-muted">
-                    Open WhatsApp on your dedicated business phone &gt; Linked Devices &gt; Scan this QR code.
-                  </p>
-                </div>
-              ) : (
-                <div className="py-6 text-center text-muted text-sm space-y-2">
-                  <RefreshCw className="w-8 h-8 mx-auto text-muted animate-spin opacity-40" />
-                  <div>Bridge is waiting for connection...</div>
-                  <div className="text-xs">Start the bridge container to generate pairing QR.</div>
-                </div>
-              )}
-            </div>
-
-            <div className="pt-4 border-t border-border flex items-center justify-between text-xs text-muted">
-              <span>Bridge Target: VPS Docker Container</span>
-              <span className="font-mono">Port 8080</span>
-            </div>
-          </div>
+          {/* 1. Realtime Reactive Device Pairing & Status Card */}
+          <DevicePairingCard initialSession={session} />
 
           {/* 2. Anti-Ban Safeguards Card */}
           <div className="bg-surface-alt border border-border rounded-xl p-6 shadow-sm flex flex-col justify-between">

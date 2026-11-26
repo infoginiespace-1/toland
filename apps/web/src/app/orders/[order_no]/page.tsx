@@ -37,7 +37,11 @@ export default async function OrderTrackingPage({ params }: OrderTrackingPagePro
           wash,
           product:products (
             name,
-            slug
+            slug,
+            images:product_images (
+              path,
+              sort
+            )
           )
         )
       ),
@@ -210,8 +214,17 @@ export default async function OrderTrackingPage({ params }: OrderTrackingPagePro
             {items.map((item: any) => (
               <div key={item.id} className="p-4 flex items-center justify-between gap-4 text-xs">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-surface-alt border border-border flex items-center justify-center text-primary shrink-0">
-                    <Layers className="w-5 h-5" />
+                  <div className="w-10 h-10 rounded-lg bg-surface-alt border border-border flex items-center justify-center text-primary shrink-0 overflow-hidden">
+                    {item.variant?.product?.images?.[0]?.path ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={item.variant.product.images[0].path}
+                        alt={item.variant.product.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <Layers className="w-5 h-5" />
+                    )}
                   </div>
                   <div>
                     <div className="font-bold text-text">

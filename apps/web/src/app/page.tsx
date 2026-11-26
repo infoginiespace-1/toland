@@ -26,13 +26,14 @@ export default async function HomePage() {
     .eq('is_active', true)
     .order('sort', { ascending: true });
 
-  // Fetch featured products with variants
+  // Fetch featured products with variants and images
   const { data: products } = await supabase
     .from('products')
     .select(`
       *,
       category:categories(name, slug),
-      variants:product_variants(*)
+      variants:product_variants(*),
+      images:product_images(path, sort)
     `)
     .eq('is_active', true)
     .eq('is_featured', true)
@@ -41,56 +42,80 @@ export default async function HomePage() {
   return (
     <div className="space-y-16 pb-20">
       {/* 1. HERO SECTION */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-surface-alt via-surface to-surface border-b border-border py-16 sm:py-24">
+      <section className="relative overflow-hidden bg-gradient-to-b from-surface-alt via-surface to-surface border-b border-border py-12 sm:py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-3xl space-y-6">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold bg-primary/10 text-primary border border-primary/25 shadow-2xs">
-              <Sparkles className="w-3.5 h-3.5 text-accent" />
-              <span>Direct From Sheikhpura Manufacturing Facility</span>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+            {/* Left Content */}
+            <div className="lg:col-span-7 space-y-6">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold bg-primary/10 text-primary border border-primary/25 shadow-2xs">
+                <Sparkles className="w-3.5 h-3.5 text-accent" />
+                <span>Direct From Sheikhpura Manufacturing Facility</span>
+              </div>
+
+              <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-text leading-[1.08]">
+                Heavyweight Denim. <br />
+                <span className="text-primary underline decoration-accent decoration-wavy decoration-2">
+                  Factory Direct Value.
+                </span>
+              </h1>
+
+              <p className="text-base sm:text-lg text-muted max-w-2xl leading-relaxed">
+                We cut, stitch, stone-wash, and finish 100% ring-spun cotton denim jeans at our factory in Sheikhpura,
+                Barbigha (Bihar). Authentic manufacturer pricing with zero middleman markups.
+              </p>
+
+              <div className="flex flex-wrap items-center gap-4 pt-2">
+                <Link
+                  href="/products"
+                  className="px-6 py-3.5 rounded-xl bg-primary text-white text-sm font-extrabold uppercase tracking-wide hover:bg-primary-hover shadow-md hover:shadow-lg transition-all flex items-center gap-2"
+                >
+                  <span>Shop Denim Collection</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+
+                <Link
+                  href="/b2b"
+                  className="px-6 py-3.5 rounded-xl bg-surface border border-border text-text text-sm font-bold hover:bg-surface-alt hover:border-primary transition-colors flex items-center gap-2"
+                >
+                  <span>Wholesale & B2B Tiers</span>
+                </Link>
+              </div>
+
+              {/* Quick Guarantees */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-6 border-t border-border/60 text-xs font-semibold text-muted">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-accent shrink-0" />
+                  <span>13.5oz Ring-Spun Cotton</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-accent shrink-0" />
+                  <span>In-House Stone Wash</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-accent shrink-0" />
+                  <span>GST Invoicing Ready</span>
+                </div>
+              </div>
             </div>
 
-            <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-text leading-[1.08]">
-              Heavyweight Denim. <br />
-              <span className="text-primary underline decoration-accent decoration-wavy decoration-2">
-                Factory Direct Value.
-              </span>
-            </h1>
-
-            <p className="text-base sm:text-lg text-muted max-w-2xl leading-relaxed">
-              We cut, stitch, stone-wash, and finish 100% ring-spun cotton denim jeans at our factory in Sheikhpura,
-              Barbigha (Bihar). Authentic manufacturer pricing with zero middleman markups.
-            </p>
-
-            <div className="flex flex-wrap items-center gap-4 pt-2">
-              <Link
-                href="/products"
-                className="px-6 py-3.5 rounded-xl bg-primary text-white text-sm font-extrabold uppercase tracking-wide hover:bg-primary-hover shadow-md hover:shadow-lg transition-all flex items-center gap-2"
-              >
-                <span>Shop Denim Collection</span>
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-
-              <Link
-                href="/b2b"
-                className="px-6 py-3.5 rounded-xl bg-surface border border-border text-text text-sm font-bold hover:bg-surface-alt hover:border-primary transition-colors flex items-center gap-2"
-              >
-                <span>Wholesale & B2B Tiers</span>
-              </Link>
-            </div>
-
-            {/* Quick Guarantees */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-8 border-t border-border/60 text-xs font-semibold text-muted">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-accent" />
-                <span>13.5oz Ring-Spun Cotton</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-accent" />
-                <span>In-House Enzyme Stone Wash</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-accent" />
-                <span>GST Invoicing Available</span>
+            {/* Right Hero Visual Showcase */}
+            <div className="lg:col-span-5 relative">
+              <div className="relative aspect-4/5 rounded-3xl overflow-hidden border border-border shadow-xl bg-surface-alt group">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?auto=format&fit=crop&w=1200&q=80"
+                  alt="TOLAND Sheikhpura Denim Manufacturing"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-6 text-white">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-accent/90 text-primary font-mono text-3xs font-extrabold uppercase tracking-wider w-fit mb-2">
+                    Khetalpura 811101
+                  </div>
+                  <h3 className="text-xl font-black">Authentic Indian Craftsmanship</h3>
+                  <p className="text-xs text-white/80 mt-1">
+                    Every pair undergoes 14 distinct quality inspections before dispatch.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -170,24 +195,39 @@ export default async function HomePage() {
                   key={product.id}
                   className="group rounded-2xl bg-surface-alt border border-border hover:border-primary/60 hover:shadow-lg transition-all flex flex-col justify-between overflow-hidden"
                 >
-                  {/* Image Placeholder / Visual Container */}
-                  <div className="relative aspect-4/5 bg-gradient-to-br from-surface-alt to-surface border-b border-border flex flex-col items-center justify-center p-6 text-center">
+                  {/* Image Visual Container */}
+                  <Link
+                    href={`/products/${product.slug}`}
+                    className="relative aspect-4/5 bg-surface border-b border-border overflow-hidden block"
+                  >
                     {/* Badge */}
                     {discountPercent > 0 && (
-                      <span className="absolute top-3 left-3 px-2 py-0.5 rounded text-3xs font-extrabold uppercase bg-danger text-white shadow-xs">
+                      <span className="absolute top-3 left-3 z-10 px-2 py-0.5 rounded text-3xs font-extrabold uppercase bg-danger text-white shadow-xs">
                         {discountPercent}% OFF
                       </span>
                     )}
-                    <span className="absolute top-3 right-3 px-2 py-0.5 rounded text-3xs font-bold uppercase bg-surface text-muted border border-border">
+                    <span className="absolute top-3 right-3 z-10 px-2 py-0.5 rounded text-3xs font-bold uppercase bg-surface/90 backdrop-blur-xs text-text border border-border">
                       {product.category?.name || 'Denim'}
                     </span>
 
-                    <div className="w-20 h-20 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary mb-3 group-hover:scale-105 transition-transform">
-                      <Layers className="w-10 h-10" />
-                    </div>
-                    <span className="text-xs font-bold text-text line-clamp-1">{product.name}</span>
-                    <span className="text-3xs text-muted font-medium mt-1">100% Ring-Spun Cotton</span>
-                  </div>
+                    {product.images && product.images.length > 0 ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={product.images[0].path}
+                        alt={product.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-gradient-to-br from-surface-alt to-surface">
+                        <div className="w-20 h-20 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary mb-3 group-hover:scale-105 transition-transform">
+                          <Layers className="w-10 h-10" />
+                        </div>
+                        <span className="text-xs font-bold text-text line-clamp-1">{product.name}</span>
+                        <span className="text-3xs text-muted font-medium mt-1">100% Ring-Spun Cotton</span>
+                      </div>
+                    )}
+                  </Link>
 
                   {/* Details */}
                   <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
