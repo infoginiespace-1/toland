@@ -18,6 +18,12 @@ import {
   Shield,
   Truck,
   Users,
+  Boxes,
+  Factory,
+  FileSpreadsheet,
+  ClipboardList,
+  Activity,
+  Percent,
 } from 'lucide-react';
 
 interface AdminSidebarProps {
@@ -39,6 +45,18 @@ export function AdminSidebar({ userPhone = 'Admin', userRole = 'admin' }: AdminS
         { label: 'Banners', href: '/admin/banners', icon: ImageIcon },
         { label: 'Coupons', href: '/admin/coupons', icon: Tag },
         { label: 'Orders & Shipments', href: '/admin/orders', icon: ShoppingBag },
+      ],
+    },
+    {
+      group: 'ERP & Manufacturing',
+      links: [
+        { label: 'Raw Materials', href: '/admin/erp/raw-materials', icon: Boxes },
+        { label: 'Suppliers', href: '/admin/erp/suppliers', icon: Factory },
+        { label: 'Bill of Materials', href: '/admin/erp/boms', icon: FileSpreadsheet },
+        { label: 'Purchase Orders', href: '/admin/erp/purchase-orders', icon: ClipboardList },
+        { label: 'Production Runs', href: '/admin/erp/production', icon: Layers },
+        { label: 'Stock Ledger', href: '/admin/erp/stock-ledger', icon: Activity },
+        { label: 'B2B Price Tiers', href: '/admin/erp/b2b-tiers', icon: Percent },
       ],
     },
     {
