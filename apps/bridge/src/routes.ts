@@ -76,10 +76,20 @@ router.post('/pair-code', async (req: Request, res: Response) => {
     if (!phone) {
       return res.status(400).json({ error: 'Phone number is required' });
     }
-    const code = await whatsappService.requestPairingCode(phone);
+    const code = await (whatsappService as any).requestPairingCode(phone);
     res.json({ success: true, code });
   } catch (err: any) {
     res.status(500).json({ error: err?.message || 'Failed to request pairing code' });
+  }
+});
+
+// 3.2. POST /reconnect (Force fresh QR generation & Baileys socket reload)
+router.post('/reconnect', async (req: Request, res: Response) => {
+  try {
+    await (whatsappService as any).reconnect();
+    res.json({ success: true, message: 'WhatsApp bridge reconnecting with fresh QR' });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || 'Failed to reconnect bridge' });
   }
 });
 

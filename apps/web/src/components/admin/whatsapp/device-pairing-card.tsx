@@ -12,6 +12,7 @@ import {
   Send,
   ArrowRight,
   ShieldCheck,
+  Zap,
 } from 'lucide-react';
 
 interface DevicePairingCardProps {
@@ -24,6 +25,7 @@ export function DevicePairingCard({ initialSession }: DevicePairingCardProps) {
   const [phone, setPhone] = useState('8797186001');
   const [pairingCode, setPairingCode] = useState<string | null>(null);
   const [loadingCode, setLoadingCode] = useState(false);
+  const [reconnecting, setReconnecting] = useState(false);
   const [testPhone, setTestPhone] = useState('8797186001');
   const [testSending, setTestSending] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -56,9 +58,35 @@ export function DevicePairingCard({ initialSession }: DevicePairingCardProps) {
   const isQrExpired =
     isQrReady &&
     session?.updated_at &&
-    Date.now() - new Date(session.updated_at).getTime() > 90000;
+    Date.now() - new Date(session.updated_at).getTime() > 60000;
 
-  // 2. Request 8-Digit Pairing Code
+  // 2. Manual Reconnect / Fresh QR trigger
+  const handleReconnect = async () => {
+    setReconnecting(true);
+    setFeedbackMsg(null);
+    try {
+      const res = await fetch('/api/admin/whatsapp/reconnect', {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to reconnect bridge');
+      }
+      setFeedbackMsg({
+        type: 'success',
+        text: 'Bridge reconnected! A fresh QR code is being generated...',
+      });
+    } catch (err: any) {
+      setFeedbackMsg({
+        type: 'error',
+        text: err.message || 'Error reconnecting bridge',
+      });
+    } finally {
+      setReconnecting(false);
+    }
+  };
+
+  // 3. Request 8-Digit Pairing Code
   const handleRequestPairingCode = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoadingCode(true);
@@ -66,10 +94,13 @@ export function DevicePairingCard({ initialSession }: DevicePairingCardProps) {
     setPairingCode(null);
 
     try {
+      const cleanPhone = phone.replace(/[^0-9]/g, '');
+      const fullPhone = cleanPhone.startsWith('91') ? cleanPhone : `91${cleanPhone}`;
+
       const res = await fetch('/api/admin/whatsapp/pair-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone }),
+        body: JSON.stringify({ phone: fullPhone }),
       });
 
       const data = await res.json();
@@ -84,7 +115,7 @@ export function DevicePairingCard({ initialSession }: DevicePairingCardProps) {
       });
     } catch (err: any) {
       const msg = err.message === 'fetch failed'
-        ? 'WhatsApp Bridge is offline or starting up on Render. Please wait a moment.'
+        ? 'WhatsApp Bridge is offline or starting up on Render. Please click Reconnect Bridge.'
         : (err.message || 'Error generating pairing code.');
       setFeedbackMsg({
         type: 'error',
@@ -95,7 +126,7 @@ export function DevicePairingCard({ initialSession }: DevicePairingCardProps) {
     }
   };
 
-  // 3. Send Test WhatsApp Message
+  // 4. Send Test WhatsApp Message
   const handleSendTestMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     setTestSending(true);
@@ -140,21 +171,31 @@ export function DevicePairingCard({ initialSession }: DevicePairingCardProps) {
               Baileys Device Pairing
             </h2>
           </div>
-          {isConnected ? (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-2xs font-extrabold bg-success/15 text-success border border-success/30">
-              <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse"></span>
-              Connected
-            </span>
-          ) : isQrReady && !isQrExpired ? (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-2xs font-extrabold bg-warning/15 text-warning border border-warning/30">
-              <span className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse"></span>
-              Live Socket
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-2xs font-semibold bg-muted/15 text-muted">
-              Waiting for Bridge
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleReconnect}
+              disabled={reconnecting}
+              title="Force reconnect & generate fresh QR code"
+              className="p-1.5 rounded-lg border border-border hover:bg-surface text-muted hover:text-text transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${reconnecting ? 'animate-spin text-primary' : ''}`} />
+            </button>
+            {isConnected ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-2xs font-extrabold bg-success/15 text-success border border-success/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse"></span>
+                Connected
+              </span>
+            ) : isQrReady && !isQrExpired ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-2xs font-extrabold bg-warning/15 text-warning border border-warning/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse"></span>
+                Live Socket
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-2xs font-semibold bg-muted/15 text-muted">
+                Waiting for Bridge
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Feedback Alert */}
@@ -259,12 +300,17 @@ export function DevicePairingCard({ initialSession }: DevicePairingCardProps) {
                       }`}
                     />
                     {isQrExpired && (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center p-3 bg-surface/90 rounded-xl">
-                        <AlertTriangle className="w-7 h-7 text-warning mb-1" />
+                      <div className="absolute inset-0 flex flex-col items-center justify-center p-3 bg-surface/90 rounded-xl space-y-2">
+                        <AlertTriangle className="w-6 h-6 text-warning" />
                         <span className="text-xs font-bold text-text">QR Expired</span>
-                        <span className="text-3xs text-muted max-w-[150px] leading-tight mt-0.5">
-                          Start or restart bridge daemon to get a fresh QR code.
-                        </span>
+                        <button
+                          onClick={handleReconnect}
+                          disabled={reconnecting}
+                          className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary-hover flex items-center gap-1.5 cursor-pointer shadow-sm"
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 ${reconnecting ? 'animate-spin' : ''}`} />
+                          <span>Generate Fresh QR</span>
+                        </button>
                       </div>
                     )}
                   </div>
@@ -273,15 +319,32 @@ export function DevicePairingCard({ initialSession }: DevicePairingCardProps) {
                       WhatsApp on Phone &gt; Linked Devices &gt; Link a Device
                     </p>
                     <p className="text-3xs text-muted">
-                      Status: {isQrExpired ? 'Stale · Run pnpm run bridge to refresh' : 'Socket Active · Ready to scan'}
+                      Status: {isQrExpired ? 'Stale · Click above to refresh' : 'Socket Active · Ready to scan'}
                     </p>
+                  </div>
+                  <div className="pt-1">
+                    <button
+                      onClick={handleReconnect}
+                      disabled={reconnecting}
+                      className="inline-flex items-center gap-1 text-2xs font-semibold text-primary hover:underline cursor-pointer"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${reconnecting ? 'animate-spin' : ''}`} />
+                      <span>Regenerate QR Code</span>
+                    </button>
                   </div>
                 </div>
               ) : (
-                <div className="py-8 text-center text-muted text-xs space-y-2">
-                  <RefreshCw className="w-6 h-6 mx-auto text-muted animate-spin opacity-40" />
+                <div className="py-6 text-center text-muted text-xs space-y-3">
+                  <RefreshCw className={`w-6 h-6 mx-auto ${reconnecting ? 'animate-spin text-primary' : 'text-muted opacity-40'}`} />
                   <div>Bridge is waiting for connection...</div>
-                  <div className="text-3xs">Run <code className="bg-surface px-1 py-0.5 rounded font-mono">pnpm run bridge</code> locally or in Docker</div>
+                  <button
+                    onClick={handleReconnect}
+                    disabled={reconnecting}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary-hover cursor-pointer"
+                  >
+                    <Zap className="w-3.5 h-3.5" />
+                    <span>{reconnecting ? 'Connecting...' : 'Reconnect & Generate QR'}</span>
+                  </button>
                 </div>
               )
             ) : (
@@ -335,7 +398,7 @@ export function DevicePairingCard({ initialSession }: DevicePairingCardProps) {
                       {pairingCode.slice(0, 4)}-{pairingCode.slice(4)}
                     </div>
                     <div className="text-3xs text-muted">
-                      Open WhatsApp on your phone &gt; Linked Devices &gt; Link with phone number instead.
+                      Open WhatsApp on phone &gt; Linked Devices &gt; Link with phone number instead.
                     </div>
                   </div>
                 )}
@@ -347,7 +410,13 @@ export function DevicePairingCard({ initialSession }: DevicePairingCardProps) {
 
       <div className="pt-4 mt-4 border-t border-border flex items-center justify-between text-2xs text-muted">
         <span>Persistent Postgres Auth Store</span>
-        <span className="font-mono">Port 8080</span>
+        <button
+          onClick={handleReconnect}
+          disabled={reconnecting}
+          className="text-primary hover:underline font-medium cursor-pointer"
+        >
+          {reconnecting ? 'Reconnecting...' : 'Force Refresh Socket'}
+        </button>
       </div>
     </div>
   );

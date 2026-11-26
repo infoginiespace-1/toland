@@ -36,11 +36,41 @@ export class BaileysWhatsAppService implements WhatsAppProvider {
   // Request 8-digit Pairing Code alternative to QR
   public async requestPairingCode(phone: string): Promise<string> {
     if (!this.sock) {
-      throw new Error('WhatsApp socket is not initialized');
+      console.log('[Baileys] Socket was null on requestPairingCode. Initializing fresh socket...');
+      this.isConnecting = false;
+      await this.start();
+      // Wait up to 10 seconds for this.sock to be instantiated
+      for (let i = 0; i < 20; i++) {
+        if (this.sock) break;
+        await new Promise((r) => setTimeout(r, 500));
+      }
     }
-    const clean = phone.replace(/[^0-9]/g, '');
+    if (!this.sock) {
+      throw new Error('WhatsApp service is starting up. Please click again in a few seconds.');
+    }
+    let clean = phone.replace(/[^0-9]/g, '');
+    if (clean.length === 10) {
+      clean = `91${clean}`;
+    }
     const code = await this.sock.requestPairingCode(clean);
     return code;
+  }
+
+  // Force manual reconnect & fresh QR generation
+  public async reconnect(): Promise<void> {
+    console.log('[Baileys] Manual reconnect triggered');
+    this.isConnecting = false;
+    this.sock = null;
+    this.reconnectAttempts = 0;
+    if (this.clearCredsFn) {
+      try {
+        await this.clearCredsFn();
+      } catch (e) {
+        console.error('[Baileys] Error clearing creds on reconnect:', e);
+      }
+    }
+    await this.updateSession({ status: 'connecting', qr: null, connected_phone: null });
+    await this.start();
   }
 
   // Update session record in Postgres for admin panel Realtime visibility
@@ -91,7 +121,7 @@ export class BaileysWhatsAppService implements WhatsAppProvider {
         logger: pino({ level: 'silent' }),
         printQRInTerminal: false,
         auth: state,
-        browser: Browsers.macOS('Desktop'),
+        browser: Browsers.ubuntu('Chrome'),
         syncFullHistory: false,
         connectTimeoutMs: 60000,
         keepAliveIntervalMs: 25000,
@@ -117,22 +147,29 @@ export class BaileysWhatsAppService implements WhatsAppProvider {
 
         if (connection === 'close') {
           const statusCode = (lastDisconnect?.error as any)?.output?.statusCode;
-          const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
-          console.warn(`[Baileys] Connection closed. StatusCode: ${statusCode}. Reconnecting: ${shouldReconnect}`);
+          console.warn(`[Baileys] Connection closed. StatusCode: ${statusCode}`);
 
           this.sock = null;
           this.isConnecting = false;
 
-          if (shouldReconnect) {
-            this.reconnectAttempts++;
-            const delayMs = Math.min(3000 * Math.pow(1.5, this.reconnectAttempts), 60000);
-            console.log(`[Baileys] Reconnecting in ${delayMs / 1000}s (attempt ${this.reconnectAttempts})...`);
-            await this.updateSession({ status: 'disconnected', qr: null });
-            setTimeout(() => this.start(), delayMs);
+          if (statusCode === DisconnectReason.loggedOut) {
+            console.warn('[Baileys] Device logged out or QR session timed out (401). Clearing credentials & restarting fresh session in 3s...');
+            if (this.clearCredsFn) {
+              try {
+                await this.clearCredsFn();
+              } catch (e) {
+                console.error('[Baileys] Error clearing creds:', e);
+              }
+            }
+            await this.updateSession({ status: 'connecting', qr: null, connected_phone: null });
+            this.reconnectAttempts = 0;
+            setTimeout(() => this.start(), 3000);
           } else {
-            console.warn('[Baileys] Device logged out. Clearing credentials.');
-            if (this.clearCredsFn) await this.clearCredsFn();
-            await this.updateSession({ status: 'disconnected', qr: null, connected_phone: null });
+            this.reconnectAttempts++;
+            const delayMs = Math.min(3000 * Math.pow(1.5, this.reconnectAttempts), 30000);
+            console.log(`[Baileys] Reconnecting in ${delayMs / 1000}s (attempt ${this.reconnectAttempts})...`);
+            await this.updateSession({ status: 'connecting', qr: null });
+            setTimeout(() => this.start(), delayMs);
           }
         } else if (connection === 'open') {
           this.isConnecting = false;

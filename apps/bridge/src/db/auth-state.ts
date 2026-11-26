@@ -13,8 +13,14 @@ export async function usePostgresAuthState(sessionId: string = 'default'): Promi
   saveCreds: () => Promise<void>;
   clearCreds: () => Promise<void>;
 }> {
-  // Helper to read a key from wa_auth_keys
+  // Fast In-Memory Cache to ensure 0ms latency during WhatsApp cryptographic handshake
+  const localCache = new Map<string, any>();
+
+  // Helper to read a key from localCache or fallback to wa_auth_keys
   const readData = async (keyId: string): Promise<any> => {
+    if (localCache.has(keyId)) {
+      return localCache.get(keyId);
+    }
     try {
       const res = await query(
         'SELECT value FROM public.wa_auth_keys WHERE session_id = $1 AND key_id = $2',
@@ -23,15 +29,18 @@ export async function usePostgresAuthState(sessionId: string = 'default'): Promi
       if (res.rows.length === 0) return null;
       const raw = res.rows[0].value;
       const jsonStr = typeof raw === 'string' ? raw : JSON.stringify(raw);
-      return JSON.parse(jsonStr, BufferJSON.reviver);
+      const parsed = JSON.parse(jsonStr, BufferJSON.reviver);
+      localCache.set(keyId, parsed);
+      return parsed;
     } catch (err) {
       console.error(`[AuthState] Error reading key ${keyId}:`, err);
       return null;
     }
   };
 
-  // Helper to write a key into wa_auth_keys
+  // Helper to write a key into localCache immediately and wa_auth_keys in background
   const writeData = async (keyId: string, data: any): Promise<void> => {
+    localCache.set(keyId, data);
     try {
       const jsonStr = JSON.stringify(data, BufferJSON.replacer);
       await query(
@@ -46,8 +55,9 @@ export async function usePostgresAuthState(sessionId: string = 'default'): Promi
     }
   };
 
-  // Helper to remove a key from wa_auth_keys
+  // Helper to remove a key from localCache and wa_auth_keys
   const removeData = async (keyId: string): Promise<void> => {
+    localCache.delete(keyId);
     try {
       await query(
         'DELETE FROM public.wa_auth_keys WHERE session_id = $1 AND key_id = $2',
@@ -60,6 +70,7 @@ export async function usePostgresAuthState(sessionId: string = 'default'): Promi
 
   // Helper to clear all session credentials on logout
   const clearCreds = async (): Promise<void> => {
+    localCache.clear();
     try {
       await query('DELETE FROM public.wa_auth_keys WHERE session_id = $1', [sessionId]);
       console.log(`[AuthState] Cleared all auth keys for session ${sessionId}`);
