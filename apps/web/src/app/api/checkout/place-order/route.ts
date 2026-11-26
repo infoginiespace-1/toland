@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 const placeOrderSchema = z.object({
   customerName: z.string().min(2, 'Name is required'),
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
       couponCode,
     } = parsed.data;
 
-    const supabase = createClient();
+    const supabase = createAdminClient();
 
     // 1. Calculate Financials
     const subtotal = items.reduce((sum, item) => sum + item.price * item.qty, 0);

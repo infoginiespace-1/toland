@@ -322,7 +322,7 @@ export default function B2BWholesalePage() {
               Prefer chatting directly? Message our wholesale sales lead on WhatsApp.
             </p>
             <a
-              href="https://wa.me/919876543210?text=Hello%20TOLAND,%20I%20want%20to%20discuss%20a%20B2B%20wholesale%20denim%20order"
+              href="https://wa.me/918797186001?text=Hello%20TOLAND,%20I%20want%20to%20discuss%20a%20B2B%20wholesale%20denim%20order"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-success text-white text-xs font-bold hover:bg-success/90 transition-colors shadow-2xs"

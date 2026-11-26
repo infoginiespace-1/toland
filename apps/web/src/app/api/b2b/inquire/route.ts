@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 const b2bInquirySchema = z.object({
   name: z.string().min(2, 'Name is required'),
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
 
     const { name, phone, businessName, city, state, estimatedQty, notes } = parsed.data;
 
-    const supabase = createClient();
+    const supabase = createAdminClient();
 
     const cleanPhone = phone.replace(/[^0-9]/g, '');
     const formattedPhone = cleanPhone.startsWith('91') && cleanPhone.length === 12

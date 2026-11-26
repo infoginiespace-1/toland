@@ -43,13 +43,13 @@ export default function ContactPage() {
               Message us for live size recommendations, order tracking updates, and B2B rate cards.
             </p>
             <a
-              href="https://wa.me/919876543210"
+              href="https://wa.me/918797186001"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-success text-white text-xs font-bold hover:bg-success/90 transition-colors shadow-2xs"
             >
               <PhoneCall className="w-3.5 h-3.5" />
-              <span>Chat on WhatsApp (+91 98765 43210)</span>
+              <span>Chat on WhatsApp (+91 87971 86001)</span>
             </a>
           </div>
 

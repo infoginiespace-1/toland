@@ -1,8 +1,17 @@
 import { Pool, QueryResult, QueryResultRow } from 'pg';
 import { config } from '../config';
 
+// Permit Supabase pooler TLS handshake across all environments
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
+// Clean connection string so node-postgres respects ssl object without parameter override
+const cleanConnectionString = config.DATABASE_URL
+  .replace('?sslmode=require', '')
+  .replace('&sslmode=require', '')
+  .replace('sslmode=require', '');
+
 export const pool = new Pool({
-  connectionString: config.DATABASE_URL,
+  connectionString: cleanConnectionString,
   ssl: {
     rejectUnauthorized: false,
   },

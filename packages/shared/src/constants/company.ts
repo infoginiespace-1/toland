@@ -13,7 +13,7 @@ export const COMPANY_DETAILS = {
     fullFormatted: 'Sheikhpura, Barbigha, Khetalpura 811101 (Bihar, India)',
   },
   contact: {
-    email: 'info@toland.pvt.ltd',
-    supportPhone: '+919876543210',
+    email: 'info.giniespace@gmail.com',
+    supportPhone: '+918797186001',
   },
 } as const;

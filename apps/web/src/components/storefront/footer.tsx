@@ -91,12 +91,12 @@ export function StorefrontFooter() {
               <div className="flex items-center gap-2">
                 <Phone className="w-4 h-4 text-success shrink-0" />
                 <a
-                  href="https://wa.me/919876543210"
+                  href="https://wa.me/918797186001"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="font-bold text-success hover:underline"
                 >
-                  WhatsApp: +91 98765 43210
+                  WhatsApp: +91 87971 86001
                 </a>
               </div>
             </div>

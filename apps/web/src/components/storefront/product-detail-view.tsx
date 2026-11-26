@@ -73,7 +73,7 @@ export function ProductDetailView({ product, variants }: ProductDetailViewProps)
   };
 
   // WhatsApp Inquiry URL
-  const waInquiryUrl = `https://wa.me/919876543210?text=${encodeURIComponent(
+  const waInquiryUrl = `https://wa.me/918797186001?text=${encodeURIComponent(
     `Hello TOLAND team, I would like to inquire about ${product.name} (SKU: ${selectedVariant?.sku || 'general'}, Size: ${selectedVariant?.size || 'any'}).`
   )}`;
 

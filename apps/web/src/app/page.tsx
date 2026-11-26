@@ -317,7 +317,7 @@ export default async function HomePage() {
               Request B2B Catalog
             </Link>
             <a
-              href="https://wa.me/919876543210?text=Hello%20TOLAND,%20I%20am%20interested%20in%20wholesale%20denim%20orders"
+              href="https://wa.me/918797186001?text=Hello%20TOLAND,%20I%20am%20interested%20in%20wholesale%20denim%20orders"
               target="_blank"
               rel="noopener noreferrer"
               className="px-6 py-3.5 rounded-xl bg-success text-white hover:bg-success/90 text-sm font-bold transition-colors flex items-center justify-center gap-2"
