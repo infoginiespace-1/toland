@@ -1,0 +1,2 @@
+-- Seed script for TOLAND development & staging
+-- Will populate initial admin allowlist, categories, and test products in Phase 1

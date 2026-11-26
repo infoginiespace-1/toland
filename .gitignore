@@ -1,0 +1,40 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Next.js
+.next/
+out/
+
+# Environment files
+.env
+.env*.local
+.env.staging
+.env.production
+!.env.example
+
+# Supabase
+.supabase/
+supabase/.branches/
+supabase/.temp/
+
+# Production builds
+dist/
+build/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+
+# Docker / Auth sessions
+auth_info_baileys/
+sessions/
+*.session.json

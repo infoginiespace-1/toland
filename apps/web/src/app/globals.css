@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* TOLAND Forest Green Design Tokens */
+  --primary: #14532D;
+  --primary-hover: #0F3F22;
+  --accent: #228B22;
+  --surface: #F0F7F2;
+  --surface-alt: #E3EFE7;
+  --text: #0F1F17;
+  --muted: #5B6B61;
+  --border: #CFE0D5;
+  --danger: #B3261E;
+  --warning: #B7791F;
+  --success: #1E7B3A;
+}
+
+body {
+  color: var(--text);
+  background-color: var(--surface);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
