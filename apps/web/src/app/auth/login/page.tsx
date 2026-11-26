@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import { COMPANY_DETAILS } from '@toland/shared';
 import {
   MessageSquare,
+  Mail,
   ArrowRight,
   ShieldCheck,
   RefreshCw,
@@ -15,6 +16,10 @@ import {
   KeyRound,
   CheckCircle2,
   Lock,
+  Eye,
+  EyeOff,
+  UserPlus,
+  LogIn,
 } from 'lucide-react';
 
 function LoginFormContent() {
@@ -22,22 +27,38 @@ function LoginFormContent() {
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get('redirectTo') || '/';
 
-  const [activeTab, setActiveTab] = useState<'whatsapp' | 'admin'>('whatsapp');
+  // Auth Mode: WhatsApp vs Email
+  const [authMode, setAuthMode] = useState<'whatsapp' | 'email'>('whatsapp');
+
+  // WhatsApp OTP states
   const [phone, setPhone] = useState('8797186001');
   const [otp, setOtp] = useState('');
-  const [step, setStep] = useState<'phone' | 'otp'>('phone');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [waStep, setWaStep] = useState<'phone' | 'otp'>('phone');
   const [countdown, setCountdown] = useState(0);
   const [sentOtpHint, setSentOtpHint] = useState<string | null>(null);
 
-  // Admin Master Login states
+  // Email Auth states (Sign In vs Sign Up)
+  const [emailMode, setEmailMode] = useState<'signin' | 'signup'>('signin');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [signupPhone, setSignupPhone] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
+
+  // Admin Direct PIN states
+  const [showAdminPin, setShowAdminPin] = useState(false);
   const [adminPhone, setAdminPhone] = useState('8797186001');
   const [adminPin, setAdminPin] = useState('');
 
+  // Status states
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
   const supabase = createClient();
 
-  // Resend countdown timer
+  // Resend countdown timer for WhatsApp OTP
   useEffect(() => {
     if (countdown > 0) {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
@@ -57,9 +78,13 @@ function LoginFormContent() {
     return `+91${cleaned.slice(-10)}`;
   };
 
-  const handleSendOtp = async (e: React.FormEvent) => {
+  // -----------------------------------------------------------------------------
+  // 1. WhatsApp OTP Handlers
+  // -----------------------------------------------------------------------------
+  const handleSendWhatsAppOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSuccessMsg(null);
     setSentOtpHint(null);
 
     const formattedPhone = formatPhoneNumber(phone);
@@ -82,12 +107,13 @@ function LoginFormContent() {
       }
 
       setPhone(formattedPhone);
-      setStep('otp');
+      setWaStep('otp');
       setCountdown(60);
       if (data.testOtp) {
         setSentOtpHint(data.testOtp);
-        setOtp(data.testOtp); // Auto-fill for friction-free admin login
+        setOtp(data.testOtp); // Auto-fill for seamless testing
       }
+      setSuccessMsg('Verification code generated and queued for WhatsApp delivery!');
     } catch (err: any) {
       console.error('Send OTP Error:', err);
       setError(err.message || 'Failed to send OTP. Please check your number.');
@@ -96,9 +122,10 @@ function LoginFormContent() {
     }
   };
 
-  const handleVerifyOtp = async (e: React.FormEvent) => {
+  const handleVerifyWhatsAppOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSuccessMsg(null);
 
     if (otp.length !== 6) {
       setError('Please enter the 6-digit code received on WhatsApp');
@@ -142,9 +169,108 @@ function LoginFormContent() {
     }
   };
 
+  // -----------------------------------------------------------------------------
+  // 2. Email & Password Handlers (Sign In & Sign Up)
+  // -----------------------------------------------------------------------------
+  const handleEmailSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccessMsg(null);
+
+    if (!email || !password) {
+      setError('Please enter both email and password.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+
+      if (signInError) {
+        throw signInError;
+      }
+
+      const user = data.user;
+      const role = (user?.app_metadata?.role as string) || (user?.user_metadata?.role as string) || 'customer';
+
+      if (role === 'admin' || role === 'staff' || email.toLowerCase() === 'info.giniespace@gmail.com') {
+        router.push('/admin');
+      } else {
+        router.push(redirectTo);
+      }
+      router.refresh();
+    } catch (err: any) {
+      console.error('Email Sign In Error:', err);
+      setError(err.message || 'Invalid email or password. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEmailSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccessMsg(null);
+
+    if (!email || !password) {
+      setError('Please fill in all required fields.');
+      return;
+    }
+
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters long.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          data: {
+            name: fullName.trim() || undefined,
+            phone: signupPhone ? formatPhoneNumber(signupPhone) : undefined,
+          },
+        },
+      });
+
+      if (signUpError) {
+        throw signUpError;
+      }
+
+      if (data.session) {
+        // Instant login session established
+        setSuccessMsg('Account created successfully! Redirecting...');
+        const role = (data.user?.app_metadata?.role as string) || 'customer';
+        if (role === 'admin' || email.toLowerCase() === 'info.giniespace@gmail.com') {
+          router.push('/admin');
+        } else {
+          router.push(redirectTo);
+        }
+        router.refresh();
+      } else {
+        setSuccessMsg('Registration successful! Please check your email inbox to confirm your account.');
+        setEmailMode('signin');
+      }
+    } catch (err: any) {
+      console.error('Email Sign Up Error:', err);
+      setError(err.message || 'Registration failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // -----------------------------------------------------------------------------
+  // 3. Admin Direct Master PIN Handler
+  // -----------------------------------------------------------------------------
   const handleAdminMasterLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSuccessMsg(null);
 
     const formattedPhone = formatPhoneNumber(adminPhone);
     setLoading(true);
@@ -184,40 +310,43 @@ function LoginFormContent() {
 
   return (
     <div className="bg-surface-alt py-8 px-4 sm:px-10 shadow-sm border border-border rounded-xl">
-      {/* Auth Mode Tabs */}
+      {/* Top Level Navigation Tabs: WhatsApp Phone vs Email */}
       <div className="flex rounded-lg bg-surface p-1 border border-border mb-6">
         <button
           type="button"
           onClick={() => {
-            setActiveTab('whatsapp');
+            setAuthMode('whatsapp');
             setError(null);
+            setSuccessMsg(null);
           }}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-semibold rounded-md transition-colors ${
-            activeTab === 'whatsapp'
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+            authMode === 'whatsapp'
               ? 'bg-primary text-surface shadow-xs'
               : 'text-muted hover:text-text'
           }`}
         >
-          <MessageSquare className="w-3.5 h-3.5" />
-          <span>WhatsApp OTP</span>
+          <MessageSquare className="w-3.5 h-3.5 text-accent" />
+          <span>WhatsApp Phone</span>
         </button>
         <button
           type="button"
           onClick={() => {
-            setActiveTab('admin');
+            setAuthMode('email');
             setError(null);
+            setSuccessMsg(null);
           }}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-semibold rounded-md transition-colors ${
-            activeTab === 'admin'
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+            authMode === 'email'
               ? 'bg-primary text-surface shadow-xs'
               : 'text-muted hover:text-text'
           }`}
         >
-          <Lock className="w-3.5 h-3.5" />
-          <span>Admin Direct PIN</span>
+          <Mail className="w-3.5 h-3.5" />
+          <span>Email & Password</span>
         </button>
       </div>
 
+      {/* Notifications */}
       {error && (
         <div className="mb-6 p-4 rounded-lg bg-danger/10 border border-danger/30 text-danger text-sm flex items-start gap-3">
           <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
@@ -225,12 +354,164 @@ function LoginFormContent() {
         </div>
       )}
 
-      {activeTab === 'whatsapp' ? (
-        step === 'phone' ? (
-          <form onSubmit={handleSendOtp} className="space-y-6">
+      {successMsg && (
+        <div className="mb-6 p-4 rounded-lg bg-accent/10 border border-accent/30 text-accent text-sm flex items-start gap-3">
+          <CheckCircle2 className="w-5 h-5 flex-shrink-0 mt-0.5" />
+          <span>{successMsg}</span>
+        </div>
+      )}
+
+      {/* ----------------------------------------------------------------------- */}
+      {/* MODE 1: WhatsApp Authentication                                         */}
+      {/* ----------------------------------------------------------------------- */}
+      {authMode === 'whatsapp' ? (
+        !showAdminPin ? (
+          waStep === 'phone' ? (
+            <form onSubmit={handleSendWhatsAppOtp} className="space-y-6">
+              <div>
+                <label htmlFor="phone" className="block text-sm font-semibold text-text mb-2">
+                  Mobile Number
+                </label>
+                <div className="relative rounded-md shadow-sm">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted">
+                    <Phone className="h-4 w-4" />
+                    <span className="ml-1.5 text-sm font-semibold">+91</span>
+                  </div>
+                  <input
+                    id="phone"
+                    type="tel"
+                    placeholder="98765 43210"
+                    value={phone.replace(/^\+91/, '')}
+                    onChange={(e) => setPhone(e.target.value)}
+                    required
+                    className="block w-full pl-16 pr-4 py-3 rounded-lg border border-border bg-surface text-text placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="p-3 bg-surface rounded-lg border border-border flex items-center gap-3 text-xs text-muted">
+                <MessageSquare className="w-4 h-4 text-accent flex-shrink-0" />
+                <span>You will receive a 6-digit login code directly on WhatsApp.</span>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-primary hover:bg-primary-hover text-surface font-semibold shadow-sm transition-colors disabled:opacity-50 text-sm cursor-pointer"
+              >
+                {loading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Generating OTP...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Send WhatsApp OTP</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+
+              <div className="text-center pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAdminPin(true)}
+                  className="text-xs text-muted hover:text-primary transition-colors flex items-center justify-center gap-1.5 mx-auto"
+                >
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>Admin Master PIN access</span>
+                </button>
+              </div>
+            </form>
+          ) : (
+            <form onSubmit={handleVerifyWhatsAppOtp} className="space-y-6">
+              {sentOtpHint && (
+                <div className="p-3 bg-accent/10 border border-accent/30 rounded-lg flex items-center justify-between text-xs text-accent">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>
+                      Generated OTP: <strong className="tracking-widest font-mono text-sm">{sentOtpHint}</strong>
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setOtp(sentOtpHint)}
+                    className="underline hover:text-accent font-semibold cursor-pointer"
+                  >
+                    Auto-fill
+                  </button>
+                </div>
+              )}
+
+              <div>
+                <label htmlFor="otp" className="block text-sm font-semibold text-text mb-2">
+                  Enter 6-Digit WhatsApp Code
+                </label>
+                <div className="relative rounded-md shadow-sm">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted">
+                    <KeyRound className="h-4 w-4" />
+                  </div>
+                  <input
+                    id="otp"
+                    type="text"
+                    maxLength={6}
+                    placeholder="123456"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                    autoFocus
+                    required
+                    className="block w-full pl-10 pr-4 py-3 rounded-lg border border-border bg-surface text-text tracking-widest text-center text-xl font-bold placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent font-mono"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-primary hover:bg-primary-hover text-surface font-semibold shadow-sm transition-colors disabled:opacity-50 text-sm cursor-pointer"
+              >
+                {loading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Verifying Code...</span>
+                  </>
+                ) : (
+                  <>
+                    <ShieldCheck className="w-4 h-4" />
+                    <span>Verify & Continue</span>
+                  </>
+                )}
+              </button>
+
+              <div className="flex items-center justify-between text-xs pt-2">
+                <button
+                  type="button"
+                  onClick={() => setWaStep('phone')}
+                  className="text-muted hover:text-primary transition-colors cursor-pointer"
+                >
+                  Change phone number
+                </button>
+                {countdown > 0 ? (
+                  <span className="text-muted">Resend in {countdown}s</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleSendWhatsAppOtp}
+                    disabled={loading}
+                    className="font-semibold text-primary hover:text-primary-hover transition-colors cursor-pointer"
+                  >
+                    Resend Code
+                  </button>
+                )}
+              </div>
+            </form>
+          )
+        ) : (
+          /* Admin Direct PIN Bypass */
+          <form onSubmit={handleAdminMasterLogin} className="space-y-6">
             <div>
-              <label htmlFor="phone" className="block text-sm font-semibold text-text mb-2">
-                Mobile Number
+              <label htmlFor="adminPhone" className="block text-sm font-semibold text-text mb-2">
+                Admin Mobile Number
               </label>
               <div className="relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted">
@@ -238,80 +519,36 @@ function LoginFormContent() {
                   <span className="ml-1.5 text-sm font-semibold">+91</span>
                 </div>
                 <input
-                  id="phone"
+                  id="adminPhone"
                   type="tel"
-                  placeholder="98765 43210"
-                  value={phone.replace(/^\+91/, '')}
-                  onChange={(e) => setPhone(e.target.value)}
+                  value={adminPhone.replace(/^\+91/, '')}
+                  onChange={(e) => setAdminPhone(e.target.value)}
                   required
-                  className="block w-full pl-16 pr-4 py-3 rounded-lg border border-border bg-surface text-text placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-base sm:text-sm font-medium"
+                  className="block w-full pl-16 pr-4 py-3 rounded-lg border border-border bg-surface text-text placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm font-medium"
                 />
               </div>
             </div>
 
-            <div className="p-3 bg-surface rounded-lg border border-border flex items-center gap-3 text-xs text-muted">
-              <MessageSquare className="w-4 h-4 text-accent flex-shrink-0" />
-              <span>You will receive your 6-digit login code directly on WhatsApp.</span>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-primary hover:bg-primary-hover text-surface font-semibold shadow-sm transition-colors disabled:opacity-50 text-sm cursor-pointer"
-            >
-              {loading ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>Sending WhatsApp Code...</span>
-                </>
-              ) : (
-                <>
-                  <span>Send WhatsApp OTP</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={handleVerifyOtp} className="space-y-6">
-            {sentOtpHint && (
-              <div className="p-3 bg-accent/10 border border-accent/30 rounded-lg flex items-center justify-between text-xs text-accent">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>
-                    WhatsApp OTP Generated: <strong className="tracking-widest font-mono text-sm">{sentOtpHint}</strong>
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setOtp(sentOtpHint)}
-                  className="underline hover:text-accent font-semibold"
-                >
-                  Auto-fill
-                </button>
-              </div>
-            )}
-
             <div>
-              <label htmlFor="otp" className="block text-sm font-semibold text-text mb-2">
-                Enter 6-Digit WhatsApp Code
+              <label htmlFor="adminPin" className="block text-sm font-semibold text-text mb-2">
+                Admin Master PIN
               </label>
               <div className="relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted">
-                  <KeyRound className="h-4 w-4" />
+                  <Lock className="h-4 w-4" />
                 </div>
                 <input
-                  id="otp"
-                  type="text"
-                  maxLength={6}
-                  placeholder="123456"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                  autoFocus
-                  required
-                  className="block w-full pl-10 pr-4 py-3 rounded-lg border border-border bg-surface text-text tracking-widest text-center text-xl font-bold placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent font-mono"
+                  id="adminPin"
+                  type="password"
+                  placeholder="Enter 123456"
+                  value={adminPin}
+                  onChange={(e) => setAdminPin(e.target.value)}
+                  className="block w-full pl-10 pr-4 py-3 rounded-lg border border-border bg-surface text-text placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm font-mono font-medium"
                 />
               </div>
+              <p className="mt-1.5 text-xs text-muted">
+                Default Owner PIN: <code className="bg-surface px-1.5 py-0.5 rounded border border-border font-mono text-primary font-bold">123456</code>
+              </p>
             </div>
 
             <button
@@ -322,107 +559,277 @@ function LoginFormContent() {
               {loading ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>Verifying...</span>
+                  <span>Authenticating...</span>
                 </>
               ) : (
                 <>
                   <ShieldCheck className="w-4 h-4" />
-                  <span>Verify & Log In</span>
+                  <span>Instant Dashboard Entry</span>
                 </>
               )}
             </button>
 
-            <div className="flex items-center justify-between text-xs pt-2">
+            <div className="text-center pt-2">
               <button
                 type="button"
-                onClick={() => setStep('phone')}
-                className="text-muted hover:text-primary transition-colors"
+                onClick={() => setShowAdminPin(false)}
+                className="text-xs text-muted hover:text-primary transition-colors cursor-pointer"
               >
-                Change phone number
+                Back to WhatsApp OTP
               </button>
-              {countdown > 0 ? (
-                <span className="text-muted">Resend in {countdown}s</span>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleSendOtp}
-                  disabled={loading}
-                  className="font-semibold text-primary hover:text-primary-hover transition-colors"
-                >
-                  Resend OTP
-                </button>
-              )}
             </div>
           </form>
         )
       ) : (
-        /* Admin Direct Master Login Form */
-        <form onSubmit={handleAdminMasterLogin} className="space-y-6">
-          <div>
-            <label htmlFor="adminPhone" className="block text-sm font-semibold text-text mb-2">
-              Admin Mobile Number
-            </label>
-            <div className="relative rounded-md shadow-sm">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted">
-                <Phone className="h-4 w-4" />
-                <span className="ml-1.5 text-sm font-semibold">+91</span>
-              </div>
-              <input
-                id="adminPhone"
-                type="tel"
-                value={adminPhone.replace(/^\+91/, '')}
-                onChange={(e) => setAdminPhone(e.target.value)}
-                required
-                className="block w-full pl-16 pr-4 py-3 rounded-lg border border-border bg-surface text-text placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm font-medium"
-              />
-            </div>
+        /* --------------------------------------------------------------------- */
+        /* MODE 2: Email & Password (Sign In vs Sign Up)                         */
+        /* --------------------------------------------------------------------- */
+        <div>
+          {/* Sub-toggle: Sign In vs Create Account */}
+          <div className="flex border-b border-border mb-6">
+            <button
+              type="button"
+              onClick={() => {
+                setEmailMode('signin');
+                setError(null);
+                setSuccessMsg(null);
+              }}
+              className={`pb-3 text-sm font-semibold flex-1 text-center border-b-2 transition-colors cursor-pointer ${
+                emailMode === 'signin'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted hover:text-text'
+              }`}
+            >
+              <span className="flex items-center justify-center gap-1.5">
+                <LogIn className="w-4 h-4" />
+                <span>Sign In</span>
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEmailMode('signup');
+                setError(null);
+                setSuccessMsg(null);
+              }}
+              className={`pb-3 text-sm font-semibold flex-1 text-center border-b-2 transition-colors cursor-pointer ${
+                emailMode === 'signup'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted hover:text-text'
+              }`}
+            >
+              <span className="flex items-center justify-center gap-1.5">
+                <UserPlus className="w-4 h-4" />
+                <span>Create Account</span>
+              </span>
+            </button>
           </div>
 
-          <div>
-            <label htmlFor="adminPin" className="block text-sm font-semibold text-text mb-2">
-              Admin Master PIN
-            </label>
-            <div className="relative rounded-md shadow-sm">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted">
-                <Lock className="h-4 w-4" />
+          {emailMode === 'signin' ? (
+            /* Email Sign In Form */
+            <form onSubmit={handleEmailSignIn} className="space-y-5">
+              <div>
+                <label htmlFor="email" className="block text-sm font-semibold text-text mb-2">
+                  Email Address
+                </label>
+                <div className="relative rounded-md shadow-sm">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted">
+                    <Mail className="h-4 w-4" />
+                  </div>
+                  <input
+                    id="email"
+                    type="email"
+                    autoComplete="email"
+                    placeholder="name@company.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className="block w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-surface text-text placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                  />
+                </div>
               </div>
-              <input
-                id="adminPin"
-                type="password"
-                placeholder="Enter 123456 or Admin PIN"
-                value={adminPin}
-                onChange={(e) => setAdminPin(e.target.value)}
-                className="block w-full pl-10 pr-4 py-3 rounded-lg border border-border bg-surface text-text placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm font-medium font-mono"
-              />
-            </div>
-            <p className="mt-1.5 text-xs text-muted">
-              Master PIN: <code className="bg-surface px-1.5 py-0.5 rounded border border-border font-mono text-primary font-bold">123456</code>
-            </p>
-          </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-primary hover:bg-primary-hover text-surface font-semibold shadow-sm transition-colors disabled:opacity-50 text-sm cursor-pointer"
-          >
-            {loading ? (
-              <>
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                <span>Authenticating Admin...</span>
-              </>
-            ) : (
-              <>
-                <ShieldCheck className="w-4 h-4" />
-                <span>Instant Admin Access</span>
-                <ArrowRight className="w-4 h-4" />
-              </>
-            )}
-          </button>
-        </form>
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label htmlFor="password" className="block text-sm font-semibold text-text">
+                    Password
+                  </label>
+                  <Link
+                    href="/auth/forgot-password"
+                    className="text-xs font-medium text-primary hover:text-primary-hover transition-colors"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
+                <div className="relative rounded-md shadow-sm">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted">
+                    <Lock className="h-4 w-4" />
+                  </div>
+                  <input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="current-password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="block w-full pl-10 pr-10 py-2.5 rounded-lg border border-border bg-surface text-text placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted hover:text-text cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center">
+                <input
+                  id="remember-me"
+                  name="remember-me"
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="h-4 w-4 rounded border-border text-primary focus:ring-primary bg-surface cursor-pointer"
+                />
+                <label htmlFor="remember-me" className="ml-2 block text-xs text-muted cursor-pointer">
+                  Remember this device for 30 days
+                </label>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-primary hover:bg-primary-hover text-surface font-semibold shadow-sm transition-colors disabled:opacity-50 text-sm cursor-pointer"
+              >
+                {loading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Signing in...</span>
+                  </>
+                ) : (
+                  <>
+                    <LogIn className="w-4 h-4" />
+                    <span>Sign In with Email</span>
+                  </>
+                )}
+              </button>
+            </form>
+          ) : (
+            /* Email Sign Up Form */
+            <form onSubmit={handleEmailSignUp} className="space-y-4">
+              <div>
+                <label htmlFor="fullName" className="block text-sm font-semibold text-text mb-1.5">
+                  Full Name
+                </label>
+                <input
+                  id="fullName"
+                  type="text"
+                  placeholder="e.g. Rahul Sharma / City Store"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  required
+                  className="block w-full px-3.5 py-2.5 rounded-lg border border-border bg-surface text-text placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="signupEmail" className="block text-sm font-semibold text-text mb-1.5">
+                  Email Address
+                </label>
+                <div className="relative rounded-md shadow-sm">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted">
+                    <Mail className="h-4 w-4" />
+                  </div>
+                  <input
+                    id="signupEmail"
+                    type="email"
+                    autoComplete="email"
+                    placeholder="name@company.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className="block w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-surface text-text placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="signupPhone" className="block text-sm font-semibold text-text mb-1.5">
+                  Mobile Number <span className="text-xs font-normal text-muted">(for order WhatsApp alerts)</span>
+                </label>
+                <div className="relative rounded-md shadow-sm">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted">
+                    <Phone className="h-4 w-4" />
+                    <span className="ml-1.5 text-sm font-semibold">+91</span>
+                  </div>
+                  <input
+                    id="signupPhone"
+                    type="tel"
+                    placeholder="98765 43210"
+                    value={signupPhone}
+                    onChange={(e) => setSignupPhone(e.target.value)}
+                    className="block w-full pl-16 pr-4 py-2.5 rounded-lg border border-border bg-surface text-text placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm font-medium"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="signupPassword" className="block text-sm font-semibold text-text mb-1.5">
+                  Password <span className="text-xs font-normal text-muted">(minimum 6 characters)</span>
+                </label>
+                <div className="relative rounded-md shadow-sm">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted">
+                    <Lock className="h-4 w-4" />
+                  </div>
+                  <input
+                    id="signupPassword"
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    placeholder="Create a strong password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    className="block w-full pl-10 pr-10 py-2.5 rounded-lg border border-border bg-surface text-text placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted hover:text-text cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-primary hover:bg-primary-hover text-surface font-semibold shadow-sm transition-colors disabled:opacity-50 text-sm cursor-pointer mt-2"
+              >
+                {loading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Creating Account...</span>
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="w-4 h-4" />
+                    <span>Create Free Account</span>
+                  </>
+                )}
+              </button>
+            </form>
+          )}
+        </div>
       )}
 
+      {/* Footer Details */}
       <div className="mt-8 pt-6 border-t border-border text-center text-xs text-muted">
-        <p>Admin / Staff numbers in allowlist get automatic dashboard access.</p>
+        <p>Admin accounts with authorized email or phone get automatic dashboard access.</p>
         <p className="mt-1 font-medium">{COMPANY_DETAILS.address.fullFormatted}</p>
       </div>
     </div>
@@ -443,7 +850,7 @@ export default function LoginPage() {
           Portal Authentication
         </h2>
         <p className="mt-2 text-sm text-muted">
-          Login using WhatsApp One-Time Password or Admin Direct PIN
+          Access your storefront or factory management dashboard
         </p>
       </div>
 
