@@ -24,6 +24,11 @@ import {
   ClipboardList,
   Activity,
   Percent,
+  Contact,
+  CalendarClock,
+  Radio,
+  Bot,
+  Sliders,
 } from 'lucide-react';
 
 interface AdminSidebarProps {
@@ -60,9 +65,22 @@ export function AdminSidebar({ userPhone = 'Admin', userRole = 'admin' }: AdminS
       ],
     },
     {
-      group: 'Automation & Channels',
+      group: 'CRM & B2B Pipeline',
       links: [
-        { label: 'WhatsApp Bridge', href: '/admin/whatsapp', icon: MessageSquare },
+        { label: 'Customer Directory', href: '/admin/crm/customers', icon: Users },
+        { label: 'B2B Leads Pipeline', href: '/admin/crm/leads', icon: Contact },
+        { label: 'Scheduled Follow-ups', href: '/admin/crm/followups', icon: CalendarClock },
+        { label: 'Activity Audit Feed', href: '/admin/crm/activities', icon: Activity },
+      ],
+    },
+    {
+      group: 'WhatsApp & Engagement',
+      links: [
+        { label: 'Live Inbox & Bridge', href: '/admin/whatsapp', icon: MessageSquare },
+        { label: 'Message Templates', href: '/admin/whatsapp/templates', icon: FileSpreadsheet },
+        { label: 'Broadcast Campaigns', href: '/admin/whatsapp/campaigns', icon: Radio },
+        { label: 'Auto-Reply Bot', href: '/admin/whatsapp/auto-replies', icon: Bot },
+        { label: 'Anti-Ban Engine', href: '/admin/whatsapp/settings', icon: Sliders },
       ],
     },
   ];
