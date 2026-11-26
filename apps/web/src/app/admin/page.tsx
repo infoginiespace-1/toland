@@ -1,191 +1,379 @@
 import React from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
-import { redirect } from 'next/navigation';
-import { 
-  Package, 
-  ShoppingCart, 
-  Factory, 
-  Users, 
-  MessageSquare, 
-  Settings, 
-  ShieldAlert, 
-  BarChart3, 
+import {
+  Package,
+  ShoppingBag,
   TrendingUp,
-  LogOut
+  MessageSquare,
+  Users,
+  Plus,
+  ArrowRight,
+  Clock,
+  CheckCircle2,
+  AlertTriangle,
+  QrCode,
+  Tag,
+  Layers,
+  Sparkles,
 } from 'lucide-react';
+
+export const dynamic = 'force-dynamic';
 
 export default async function AdminDashboardPage() {
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) {
-    redirect('/auth/login?redirectTo=/admin');
-  }
-
-  const role = (user.app_metadata?.role as string) || 'customer';
-  if (role !== 'admin' && role !== 'staff') {
-    redirect('/');
-  }
-
-  // Fetch counts from database
+  // Fetch counts and recent rows in parallel
   const [
     { count: productsCount },
     { count: ordersCount },
     { count: leadsCount },
-    { count: waMessagesCount }
+    { count: waMessagesCount },
+    { data: recentOrdersData },
+    { data: recentMessagesData },
+    { data: waSessionData },
+    { data: allOrdersData },
   ] = await Promise.all([
     supabase.from('products').select('*', { count: 'exact', head: true }),
     supabase.from('orders').select('*', { count: 'exact', head: true }),
     supabase.from('leads').select('*', { count: 'exact', head: true }),
     supabase.from('wa_messages').select('*', { count: 'exact', head: true }),
+    supabase
+      .from('orders')
+      .select('id, order_no, total, status, payment_method, address_snapshot, created_at')
+      .order('created_at', { ascending: false })
+      .limit(6),
+    supabase
+      .from('wa_messages')
+      .select('id, phone, body, status, created_at, template_key')
+      .order('created_at', { ascending: false })
+      .limit(5),
+    supabase
+      .from('wa_sessions')
+      .select('*')
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .single(),
+    supabase.from('orders').select('total, status'),
   ]);
 
+  const recentOrders = (recentOrdersData || []) as any[];
+  const recentMessages = (recentMessagesData || []) as any[];
+  const waSession = waSessionData as any;
+  const allOrders = (allOrdersData || []) as any[];
+
+  const totalGrossRevenue = allOrders
+    .filter((o) => o.status !== 'cancelled')
+    .reduce((acc, o) => acc + Number(o.total || 0), 0);
+
+  const isWaConnected = waSession?.status === 'connected';
+
   return (
-    <div className="min-h-screen bg-surface flex flex-col">
-      {/* Top Admin Navbar */}
-      <header className="bg-primary text-surface h-16 border-b border-primary-hover px-4 sm:px-8 flex items-center justify-between sticky top-0 z-50">
-        <div className="flex items-center gap-3">
-          <Link href="/admin" className="text-xl font-black tracking-wider text-surface">
-            TOLAND <span className="text-xs px-2 py-0.5 rounded bg-accent font-semibold ml-1">ADMIN ERP</span>
+    <div className="space-y-8 pb-12">
+      {/* Header Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#CFE0D5]">
+        <div>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-3xs font-bold bg-primary/10 text-primary border border-primary/20 mb-1">
+            <Sparkles className="w-3.5 h-3.5 text-accent" />
+            <span>TOLAND Manufacturing Facility (Sheikhpura, Bihar)</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-black text-text tracking-tight">
+            Production & Retail Operations
+          </h1>
+          <p className="text-xs text-muted">
+            Live overview of ecommerce storefront bookings, factory catalog inventory, and WhatsApp queue.
+          </p>
+        </div>
+
+        {/* Quick Add Product Button */}
+        <div className="flex items-center gap-2">
+          <Link
+            href="/admin/products/new"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-white text-xs font-black uppercase tracking-wider hover:bg-primary-hover shadow-sm transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            <span>New Product</span>
+          </Link>
+        </div>
+      </div>
+
+      {/* 4 Main KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Gross Revenue */}
+        <div className="bg-white p-5 rounded-2xl border border-[#CFE0D5] shadow-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-3xs font-mono font-bold uppercase tracking-wider text-muted">
+              Gross Bookings
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-[#E3EFE7] text-primary flex items-center justify-center">
+              <TrendingUp className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="text-2xl font-black text-primary font-mono">
+            ₹{totalGrossRevenue.toLocaleString('en-IN')}
+          </div>
+          <span className="text-3xs text-muted block">Storefront orders total</span>
+        </div>
+
+        {/* Orders Count */}
+        <div className="bg-white p-5 rounded-2xl border border-[#CFE0D5] shadow-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-3xs font-mono font-bold uppercase tracking-wider text-muted">
+              Total Orders
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-[#E3EFE7] text-primary flex items-center justify-center">
+              <ShoppingBag className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="text-2xl font-black text-text">
+            {ordersCount || 0}
+          </div>
+          <Link href="/admin/orders" className="text-3xs text-primary font-bold hover:underline flex items-center gap-1">
+            <span>Manage Shipments</span>
+            <ArrowRight className="w-3 h-3" />
           </Link>
         </div>
 
-        <div className="flex items-center gap-4 text-xs sm:text-sm">
-          <div className="text-right hidden sm:block">
-            <p className="font-semibold text-surface">{user.phone || 'Admin'}</p>
-            <p className="text-surface/70 text-xs uppercase">{role}</p>
+        {/* Catalog Models */}
+        <div className="bg-white p-5 rounded-2xl border border-[#CFE0D5] shadow-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-3xs font-mono font-bold uppercase tracking-wider text-muted">
+              Catalog Models
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-[#E3EFE7] text-primary flex items-center justify-center">
+              <Package className="w-4 h-4" />
+            </div>
           </div>
-          <form action="/auth/signout" method="post">
-            <button
-              type="submit"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary-hover hover:bg-danger text-surface transition-colors font-medium text-xs"
+          <div className="text-2xl font-black text-text">
+            {productsCount || 0}
+          </div>
+          <Link href="/admin/products" className="text-3xs text-primary font-bold hover:underline flex items-center gap-1">
+            <span>View All Styles</span>
+            <ArrowRight className="w-3 h-3" />
+          </Link>
+        </div>
+
+        {/* WhatsApp Status */}
+        <div className="bg-white p-5 rounded-2xl border border-[#CFE0D5] shadow-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-3xs font-mono font-bold uppercase tracking-wider text-muted">
+              WhatsApp Bridge
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-[#E3EFE7] text-primary flex items-center justify-center">
+              <MessageSquare className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="text-xl font-black flex items-center gap-2">
+            {isWaConnected ? (
+              <span className="text-success flex items-center gap-1.5 text-base font-bold">
+                <span className="w-2.5 h-2.5 rounded-full bg-success animate-pulse" />
+                Live +{waSession?.connected_phone?.slice(-4)}
+              </span>
+            ) : (
+              <span className="text-warning text-sm font-bold flex items-center gap-1">
+                <QrCode className="w-4 h-4" />
+                QR Scan Needed
+              </span>
+            )}
+          </div>
+          <Link href="/admin/whatsapp" className="text-3xs text-primary font-bold hover:underline flex items-center gap-1">
+            <span>Bridge Panel ({waMessagesCount || 0} msgs)</span>
+            <ArrowRight className="w-3 h-3" />
+          </Link>
+        </div>
+      </div>
+
+      {/* Quick Launchpad Shortcuts */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <Link
+          href="/admin/products/new"
+          className="p-4 rounded-2xl bg-white border border-[#CFE0D5] hover:border-primary hover:shadow-md transition-all flex items-center gap-3 group"
+        >
+          <div className="w-10 h-10 rounded-xl bg-[#F0F7F2] text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
+            <Package className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="font-bold text-xs text-text block">Add Product</span>
+            <span className="text-3xs text-muted">Upload denim model</span>
+          </div>
+        </Link>
+
+        <Link
+          href="/admin/categories"
+          className="p-4 rounded-2xl bg-white border border-[#CFE0D5] hover:border-primary hover:shadow-md transition-all flex items-center gap-3 group"
+        >
+          <div className="w-10 h-10 rounded-xl bg-[#F0F7F2] text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
+            <Layers className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="font-bold text-xs text-text block">Categories</span>
+            <span className="text-3xs text-muted">Manage denim fits</span>
+          </div>
+        </Link>
+
+        <Link
+          href="/admin/coupons"
+          className="p-4 rounded-2xl bg-white border border-[#CFE0D5] hover:border-primary hover:shadow-md transition-all flex items-center gap-3 group"
+        >
+          <div className="w-10 h-10 rounded-xl bg-[#F0F7F2] text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
+            <Tag className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="font-bold text-xs text-text block">Promo Codes</span>
+            <span className="text-3xs text-muted">Launch campaigns</span>
+          </div>
+        </Link>
+
+        <Link
+          href="/admin/banners"
+          className="p-4 rounded-2xl bg-white border border-[#CFE0D5] hover:border-primary hover:shadow-md transition-all flex items-center gap-3 group"
+        >
+          <div className="w-10 h-10 rounded-xl bg-[#F0F7F2] text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
+            <Sparkles className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="font-bold text-xs text-text block">Hero Banners</span>
+            <span className="text-3xs text-muted">Update home slider</span>
+          </div>
+        </Link>
+      </div>
+
+      {/* Split Section: Recent Orders & WhatsApp Stream */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Left Column (2 Cols): Recent Orders Table */}
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-[#CFE0D5] p-6 shadow-xs space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-[#CFE0D5]">
+            <div>
+              <h2 className="text-sm font-bold uppercase tracking-wider text-primary">
+                Recent Storefront Bookings
+              </h2>
+              <p className="text-3xs text-muted">Latest consumer orders from across India</p>
+            </div>
+            <Link
+              href="/admin/orders"
+              className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
             >
-              <LogOut className="w-3.5 h-3.5" />
-              <span>Logout</span>
-            </button>
-          </form>
-        </div>
-      </header>
-
-      <div className="flex-1 flex flex-col md:flex-row">
-        {/* Sidebar Navigation */}
-        <aside className="w-full md:w-64 bg-surface-alt border-r border-border p-4 flex flex-col gap-1 text-sm font-medium">
-          <div className="text-xs uppercase font-bold text-muted px-3 py-2">Modules</div>
-
-          <Link href="/admin" className="flex items-center gap-3 px-3 py-2 rounded-lg bg-primary text-surface font-semibold">
-            <BarChart3 className="w-4 h-4" />
-            <span>Dashboard</span>
-          </Link>
-
-          <Link href="/admin/products" className="flex items-center gap-3 px-3 py-2 rounded-lg text-text hover:bg-surface transition-colors">
-            <Package className="w-4 h-4 text-primary" />
-            <span>Products & Catalog</span>
-          </Link>
-
-          <Link href="/admin/orders" className="flex items-center gap-3 px-3 py-2 rounded-lg text-text hover:bg-surface transition-colors">
-            <ShoppingCart className="w-4 h-4 text-primary" />
-            <span>Orders & Invoices</span>
-          </Link>
-
-          <Link href="/admin/erp" className="flex items-center gap-3 px-3 py-2 rounded-lg text-text hover:bg-surface transition-colors">
-            <Factory className="w-4 h-4 text-primary" />
-            <span>ERP & Manufacturing</span>
-          </Link>
-
-          <Link href="/admin/crm" className="flex items-center gap-3 px-3 py-2 rounded-lg text-text hover:bg-surface transition-colors">
-            <Users className="w-4 h-4 text-primary" />
-            <span>CRM & Leads</span>
-          </Link>
-
-          <Link href="/admin/whatsapp" className="flex items-center gap-3 px-3 py-2 rounded-lg text-text hover:bg-surface transition-colors">
-            <MessageSquare className="w-4 h-4 text-primary" />
-            <span>WhatsApp Automation</span>
-          </Link>
-
-          <div className="text-xs uppercase font-bold text-muted px-3 pt-6 pb-2">Administration</div>
-
-          <Link href="/admin/roles" className="flex items-center gap-3 px-3 py-2 rounded-lg text-text hover:bg-surface transition-colors">
-            <ShieldAlert className="w-4 h-4 text-primary" />
-            <span>Admin Allowlist</span>
-          </Link>
-
-          <Link href="/admin/settings" className="flex items-center gap-3 px-3 py-2 rounded-lg text-text hover:bg-surface transition-colors">
-            <Settings className="w-4 h-4 text-primary" />
-            <span>Settings</span>
-          </Link>
-        </aside>
-
-        {/* Dashboard Content */}
-        <main className="flex-1 p-6 sm:p-8">
-          <div className="max-w-6xl mx-auto">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-              <div>
-                <h1 className="text-2xl font-black text-text tracking-tight">Executive Dashboard</h1>
-                <p className="text-sm text-muted">Realtime view of TOLAND manufacturing, sales, CRM & WhatsApp status.</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-success/15 text-success border border-success/30">
-                  <span className="w-2 h-2 rounded-full bg-success animate-pulse"></span>
-                  Supabase Backend Live
-                </span>
-              </div>
-            </div>
-
-            {/* Metrics Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-              <div className="p-5 rounded-xl bg-surface-alt border border-border shadow-sm">
-                <div className="flex items-center justify-between text-muted mb-2">
-                  <span className="text-xs font-semibold uppercase tracking-wider">Catalog Products</span>
-                  <Package className="w-4 h-4 text-primary" />
-                </div>
-                <div className="text-2xl font-black text-text">{productsCount || 0}</div>
-                <p className="text-xs text-muted mt-1">Variants & inventory tracking</p>
-              </div>
-
-              <div className="p-5 rounded-xl bg-surface-alt border border-border shadow-sm">
-                <div className="flex items-center justify-between text-muted mb-2">
-                  <span className="text-xs font-semibold uppercase tracking-wider">Total Orders</span>
-                  <ShoppingCart className="w-4 h-4 text-primary" />
-                </div>
-                <div className="text-2xl font-black text-text">{ordersCount || 0}</div>
-                <p className="text-xs text-muted mt-1">Storefront & B2B orders</p>
-              </div>
-
-              <div className="p-5 rounded-xl bg-surface-alt border border-border shadow-sm">
-                <div className="flex items-center justify-between text-muted mb-2">
-                  <span className="text-xs font-semibold uppercase tracking-wider">CRM Inquiries</span>
-                  <TrendingUp className="w-4 h-4 text-primary" />
-                </div>
-                <div className="text-2xl font-black text-text">{leadsCount || 0}</div>
-                <p className="text-xs text-muted mt-1">Active leads & wholesale inquiries</p>
-              </div>
-
-              <div className="p-5 rounded-xl bg-surface-alt border border-border shadow-sm">
-                <div className="flex items-center justify-between text-muted mb-2">
-                  <span className="text-xs font-semibold uppercase tracking-wider">WhatsApp Traffic</span>
-                  <MessageSquare className="w-4 h-4 text-primary" />
-                </div>
-                <div className="text-2xl font-black text-text">{waMessagesCount || 0}</div>
-                <p className="text-xs text-muted mt-1">OTP, orders & notifications</p>
-              </div>
-            </div>
-
-            {/* Factory & Warehouse Info */}
-            <div className="p-6 rounded-xl bg-surface-alt border border-border">
-              <h2 className="text-base font-bold text-text mb-2">Manufacturing Facility</h2>
-              <p className="text-sm text-muted">
-                TOLAND Private Limited — Sheikhpura, Barbigha, Khetalpura 811101 (Bihar, India).
-              </p>
-              <div className="mt-4 flex flex-wrap gap-2 text-xs font-medium">
-                <span className="px-2.5 py-1 rounded bg-surface border border-border text-text">Denim Jeans</span>
-                <span className="px-2.5 py-1 rounded bg-surface border border-border text-text">Casual Pants</span>
-                <span className="px-2.5 py-1 rounded bg-surface border border-border text-text">Raw Materials BOM</span>
-                <span className="px-2.5 py-1 rounded bg-surface border border-border text-text">5-Stage Production Flow</span>
-              </div>
-            </div>
+              <span>View All ({ordersCount || 0})</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
-        </main>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="border-b border-[#CFE0D5] bg-[#F0F7F2] text-primary font-bold text-3xs uppercase">
+                  <th className="py-2.5 px-3">Order No</th>
+                  <th className="py-2.5 px-3">Customer</th>
+                  <th className="py-2.5 px-3">Amount</th>
+                  <th className="py-2.5 px-3">Status</th>
+                  <th className="py-2.5 px-3 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#CFE0D5]">
+                {recentOrders.length > 0 ? (
+                  recentOrders.map((o) => {
+                    const address = o.address_snapshot || {};
+                    return (
+                      <tr key={o.id} className="hover:bg-[#F0F7F2]/40 transition-colors">
+                        <td className="py-3 px-3 font-mono font-bold text-primary">
+                          {o.order_no}
+                        </td>
+                        <td className="py-3 px-3 font-medium text-text">
+                          {address.name || 'Anonymous Customer'}
+                          <span className="text-3xs text-muted block font-mono">
+                            {address.city}, {address.state}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 font-mono font-bold text-text">
+                          ₹{o.total}
+                        </td>
+                        <td className="py-3 px-3">
+                          <span className="px-2 py-0.5 rounded-full text-3xs font-bold uppercase bg-[#E3EFE7] text-primary">
+                            {o.status}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-right">
+                          <Link
+                            href={`/admin/orders/${o.id}`}
+                            className="px-2.5 py-1 rounded-lg bg-primary text-white text-3xs font-bold hover:bg-primary-hover transition-colors"
+                          >
+                            Manage
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={5} className="py-8 text-center text-muted text-xs">
+                      No customer orders yet.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Right Column (1 Col): WhatsApp Automation Feed */}
+        <div className="bg-white rounded-2xl border border-[#CFE0D5] p-6 shadow-xs space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-[#CFE0D5]">
+            <div>
+              <h2 className="text-sm font-bold uppercase tracking-wider text-primary">
+                WhatsApp Dispatch Feed
+              </h2>
+              <p className="text-3xs text-muted">Outbound notifications</p>
+            </div>
+            <Link
+              href="/admin/whatsapp"
+              className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
+            >
+              <span>Bridge Logs</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          <div className="space-y-3 text-xs">
+            {recentMessages.length > 0 ? (
+              recentMessages.map((msg: any) => (
+                <div
+                  key={msg.id}
+                  className="p-3 rounded-xl bg-[#F0F7F2] border border-[#CFE0D5] space-y-1"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono font-bold text-text text-3xs">
+                      {msg.phone}
+                    </span>
+                    <span
+                      className={`text-3xs font-bold px-1.5 py-0.2 rounded uppercase ${
+                        msg.status === 'sent'
+                          ? 'bg-success/15 text-success'
+                          : msg.status === 'queued'
+                          ? 'bg-warning/15 text-warning'
+                          : 'bg-muted/15 text-muted'
+                      }`}
+                    >
+                      {msg.status}
+                    </span>
+                  </div>
+                  <p className="text-3xs text-muted line-clamp-2 leading-relaxed">
+                    {msg.body}
+                  </p>
+                  <span className="text-3xs text-muted/70 font-mono block">
+                    {new Date(msg.created_at).toLocaleTimeString('en-IN', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                </div>
+              ))
+            ) : (
+              <p className="text-xs text-muted py-6 text-center">
+                No recent WhatsApp messages queued.
+              </p>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
