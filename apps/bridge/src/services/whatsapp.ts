@@ -20,6 +20,7 @@ export class BaileysWhatsAppService implements WhatsAppProvider {
   private isConnecting = false;
   private reconnectAttempts = 0;
   private clearCredsFn: (() => Promise<void>) | null = null;
+  private messageStore = new Map<string, proto.IMessage>();
 
   constructor() {}
 
@@ -143,6 +144,30 @@ export class BaileysWhatsAppService implements WhatsAppProvider {
         connectTimeoutMs: 60000,
         keepAliveIntervalMs: 25000,
         defaultQueryTimeoutMs: 60000,
+        markOnlineOnConnect: true,
+        // Crucial: getMessage enables Baileys to re-encrypt and answer retry requests,
+        // permanently solving "Waiting for this message. This may take a while."
+        getMessage: async (key: proto.IMessageKey): Promise<proto.IMessage | undefined> => {
+          if (key.id && this.messageStore.has(key.id)) {
+            return this.messageStore.get(key.id);
+          }
+          if (key.id) {
+            try {
+              const res = await query(
+                `SELECT body FROM public.wa_messages 
+                 WHERE metadata->>'provider_message_id' = $1 OR id::text = $1 
+                 LIMIT 1`,
+                [key.id]
+              );
+              if (res.rows[0]?.body) {
+                return { conversation: res.rows[0].body };
+              }
+            } catch (err) {
+              console.error('[Baileys] Error looking up retry message from DB:', err);
+            }
+          }
+          return undefined;
+        },
       });
 
       // Handle credentials update (token rotation, new keys)
@@ -331,6 +356,15 @@ export class BaileysWhatsAppService implements WhatsAppProvider {
     try {
       const jid = this.formatJid(phone);
       const res = await this.sock.sendMessage(jid, { text });
+
+      if (res?.key?.id) {
+        this.messageStore.set(res.key.id, { conversation: text });
+        if (this.messageStore.size > 500) {
+          const firstKey = this.messageStore.keys().next().value;
+          if (firstKey) this.messageStore.delete(firstKey);
+        }
+      }
+
       return {
         success: true,
         messageId: res?.key?.id ?? undefined,
