@@ -31,7 +31,7 @@ function LoginFormContent() {
   const [authMode, setAuthMode] = useState<'whatsapp' | 'email'>('whatsapp');
 
   // WhatsApp OTP states
-  const [phone, setPhone] = useState('8797186001');
+  const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [waStep, setWaStep] = useState<'phone' | 'otp'>('phone');
   const [countdown, setCountdown] = useState(0);
@@ -48,7 +48,7 @@ function LoginFormContent() {
 
   // Admin Direct PIN states
   const [showAdminPin, setShowAdminPin] = useState(false);
-  const [adminPhone, setAdminPhone] = useState('8797186001');
+  const [adminPhone, setAdminPhone] = useState('');
   const [adminPin, setAdminPin] = useState('');
 
   // Status states
@@ -193,7 +193,12 @@ function LoginFormContent() {
       const user = data.user;
       const role = (user?.app_metadata?.role as string) || (user?.user_metadata?.role as string) || 'customer';
 
-      if (role === 'admin' || role === 'staff' || email.toLowerCase() === 'info.giniespace@gmail.com') {
+      if (
+        role === 'admin' || 
+        role === 'staff' || 
+        email.toLowerCase() === 'dawoodhussain504@gmail.com' ||
+        email.toLowerCase() === 'info.giniespace@gmail.com'
+      ) {
         router.push('/admin');
       } else {
         router.push(redirectTo);
@@ -224,34 +229,47 @@ function LoginFormContent() {
 
     setLoading(true);
     try {
-      const { data, error: signUpError } = await supabase.auth.signUp({
-        email: email.trim(),
-        password,
-        options: {
-          data: {
-            name: fullName.trim() || undefined,
-            phone: signupPhone ? formatPhoneNumber(signupPhone) : undefined,
-          },
-        },
+      // 1. Create confirmed user via server-side API (bypasses unconfirmed email / SMTP failure roadblocks)
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+          name: fullName.trim(),
+          phone: signupPhone.trim(),
+        }),
       });
 
-      if (signUpError) {
-        throw signUpError;
+      const resData = await res.json();
+      if (!res.ok) {
+        throw new Error(resData.error || 'Registration failed');
       }
 
-      if (data.session) {
-        // Instant login session established
+      // 2. Automatically sign in with the newly created & confirmed credentials
+      const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+
+      if (signInErr) {
+        setSuccessMsg('Account created successfully! Please sign in with your email & password.');
+        setEmailMode('signin');
+      } else {
         setSuccessMsg('Account created successfully! Redirecting...');
-        const role = (data.user?.app_metadata?.role as string) || 'customer';
-        if (role === 'admin' || email.toLowerCase() === 'info.giniespace@gmail.com') {
+        const user = signInData.user;
+        const role = (user?.app_metadata?.role as string) || (user?.user_metadata?.role as string) || 'customer';
+        if (
+          role === 'admin' || 
+          role === 'staff' || 
+          email.toLowerCase() === 'dawoodhussain504@gmail.com' ||
+          email.toLowerCase() === 'info.giniespace@gmail.com'
+        ) {
           router.push('/admin');
         } else {
           router.push(redirectTo);
         }
         router.refresh();
-      } else {
-        setSuccessMsg('Registration successful! Please check your email inbox to confirm your account.');
-        setEmailMode('signin');
       }
     } catch (err: any) {
       console.error('Email Sign Up Error:', err);
