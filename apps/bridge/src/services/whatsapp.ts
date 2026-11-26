@@ -56,11 +56,25 @@ export class BaileysWhatsAppService implements WhatsAppProvider {
     return code;
   }
 
+  private cleanupSocket(): void {
+    if (this.sock) {
+      try {
+        this.sock.ev.removeAllListeners('connection.update');
+        this.sock.ev.removeAllListeners('creds.update');
+        this.sock.ev.removeAllListeners('messages.upsert');
+        this.sock.end(undefined);
+      } catch (err) {
+        console.error('[Baileys] Error ending socket:', err);
+      }
+      this.sock = null;
+    }
+  }
+
   // Force manual reconnect & fresh QR generation
   public async reconnect(): Promise<void> {
     console.log('[Baileys] Manual reconnect triggered');
+    this.cleanupSocket();
     this.isConnecting = false;
-    this.sock = null;
     this.reconnectAttempts = 0;
     if (this.clearCredsFn) {
       try {
@@ -108,6 +122,9 @@ export class BaileysWhatsAppService implements WhatsAppProvider {
     if (this.isConnecting) return;
     this.isConnecting = true;
 
+    // Ensure any previously lingering socket or event listeners are destroyed before making a new socket
+    this.cleanupSocket();
+
     try {
       await this.updateSession({ status: 'connecting' });
       const { state, saveCreds, clearCreds } = await usePostgresAuthState(config.WHATSAPP_SESSION_ID);
@@ -149,7 +166,7 @@ export class BaileysWhatsAppService implements WhatsAppProvider {
           const statusCode = (lastDisconnect?.error as any)?.output?.statusCode;
           console.warn(`[Baileys] Connection closed. StatusCode: ${statusCode}`);
 
-          this.sock = null;
+          this.cleanupSocket();
           this.isConnecting = false;
 
           if (statusCode === DisconnectReason.loggedOut) {
@@ -164,6 +181,18 @@ export class BaileysWhatsAppService implements WhatsAppProvider {
             await this.updateSession({ status: 'connecting', qr: null, connected_phone: null });
             this.reconnectAttempts = 0;
             setTimeout(() => this.start(), 3000);
+          } else if (statusCode === DisconnectReason.restartRequired || statusCode === 515) {
+            console.log('[Baileys] Restart required (515) after pairing sync. Restarting immediately...');
+            this.reconnectAttempts = 0;
+            setTimeout(() => this.start(), 1000);
+          } else if (statusCode === DisconnectReason.connectionReplaced || statusCode === 440) {
+            console.warn('[Baileys] Connection replaced (440). Waiting 15s to let dominant session settle...');
+            this.reconnectAttempts = 0;
+            setTimeout(() => {
+              if (!this.sock && !this.isConnecting) {
+                this.start();
+              }
+            }, 15000);
           } else {
             this.reconnectAttempts++;
             const delayMs = Math.min(3000 * Math.pow(1.5, this.reconnectAttempts), 30000);
@@ -174,13 +203,16 @@ export class BaileysWhatsAppService implements WhatsAppProvider {
         } else if (connection === 'open') {
           this.isConnecting = false;
           this.reconnectAttempts = 0;
-          const phoneJid = this.sock?.user?.id || '';
+          const phoneJid =
+            this.sock?.user?.id ||
+            (this.sock?.authState?.creds?.me as any)?.id ||
+            '';
           const phone = phoneJid.split(':')[0].replace(/[^0-9]/g, '');
           console.log(`[Baileys] Successfully connected! Account phone: ${phone}`);
           await this.updateSession({
             status: 'connected',
             qr: null,
-            connected_phone: phone,
+            connected_phone: phone || null,
           });
         }
       });
