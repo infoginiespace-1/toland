@@ -44,5 +44,5 @@ auth_info_baileys/
 sessions/
 *.session.json
 
-.vercel
-.env*
+!.env.example
+!**/.env.example
