@@ -7,10 +7,17 @@ on:
     paths:
       - 'apps/bridge/**'
       - 'packages/shared/**'
+      - '.github/workflows/deploy-bridge.yml'
+  pull_request:
+    paths:
+      - 'apps/bridge/**'
+      - 'packages/shared/**'
+      - '.github/workflows/deploy-bridge.yml'
+  workflow_dispatch:
 
 jobs:
-  build-and-push:
-    name: Build Docker Image
+  build-and-test:
+    name: Build Docker Container
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -19,6 +26,6 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build Docker Image
+      - name: Test Docker Build
         run: |
-          docker build -t toland-bridge:latest -f apps/bridge/Dockerfile .
+          docker build -t toland-bridge:${{ github.sha }} -f apps/bridge/Dockerfile .

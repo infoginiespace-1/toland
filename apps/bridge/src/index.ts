@@ -1,49 +1,55 @@
 import express from 'express';
-import dotenv from 'dotenv';
-
-dotenv.config();
+import { config } from './config';
+import { router } from './routes';
+import { whatsappService } from './services/whatsapp';
+import { queueWorker } from './services/queue';
 
 const app = express();
-const port = process.env.PORT || 8080;
-const bridgeSecret = process.env.WHATSAPP_BRIDGE_SECRET || 'toland_bridge_secret_dev';
-
 app.use(express.json());
 
-// Secret authorization middleware
+// Secret authorization middleware enforcing x-bridge-secret header
 app.use((req, res, next) => {
-  if (req.path === '/status') return next();
+  // Allow health check without auth header for container monitoring
+  if (req.path === '/health') return next();
+
   const authHeader = req.headers['x-bridge-secret'];
-  if (!authHeader || authHeader !== bridgeSecret) {
+  if (!authHeader || authHeader !== config.WHATSAPP_BRIDGE_SECRET) {
     return res.status(401).json({ error: 'Unauthorized: Invalid or missing x-bridge-secret header' });
   }
   next();
 });
 
-// Health check endpoint
-app.get('/status', (req, res) => {
-  res.json({
-    status: 'healthy',
-    uptime: process.uptime(),
-    session: 'initialized',
-  });
+app.use(router);
+
+// Global error handling middleware
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error('[Unhandled Bridge Error]:', err);
+  res.status(500).json({ error: 'Internal server error' });
 });
 
-// Send OTP endpoint (called by send-sms-hook Edge Function)
-app.post('/send-otp', (req, res) => {
-  const { phone, otp } = req.body;
-  if (!phone || !otp) {
-    return res.status(400).json({ error: 'phone and otp are required' });
+const server = app.listen(config.PORT, async () => {
+  console.log(`[TOLAND Bridge] WhatsApp service listening on port ${config.PORT}`);
+
+  try {
+    // 1. Start Baileys WhatsApp client with Postgres auth state
+    await whatsappService.start();
+
+    // 2. Start background anti-ban queue worker
+    queueWorker.start();
+  } catch (err) {
+    console.error('[TOLAND Bridge] Failed to initialize services on startup:', err);
   }
-  // Queue OTP with highest priority
-  res.json({ success: true, message: `OTP queued for ${phone}` });
 });
 
-// Send transactional / promo message
-app.post('/send', (req, res) => {
-  const { phone, body, template_key } = req.body;
-  res.json({ success: true, message: `Message queued for ${phone}` });
-});
+// Graceful shutdown handling for container termination
+const shutdown = () => {
+  console.log('[TOLAND Bridge] Shutting down gracefully...');
+  queueWorker.stop();
+  server.close(() => {
+    console.log('[TOLAND Bridge] HTTP server closed.');
+    process.exit(0);
+  });
+};
 
-app.listen(port, () => {
-  console.log(`[TOLAND Bridge] WhatsApp service running on port ${port}`);
-});
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
