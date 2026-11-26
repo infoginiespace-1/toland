@@ -129,11 +129,12 @@ router.post('/send-otp', async (req: Request, res: Response) => {
     }
 
     // Insert with Priority 1 (OTP - Highest Priority), template_key = NULL to avoid FK constraint
+    const metadataJson = JSON.stringify({ provider_message_id: providerMsgId, type: 'otp' });
     const insertRes = await query(
-      `INSERT INTO public.wa_messages (direction, phone, body, priority, template_key, status, sent_at, provider_message_id, created_at)
-       VALUES ('outbound', $1, $2, 1, NULL, $3, $4, $5, NOW())
+      `INSERT INTO public.wa_messages (direction, phone, body, priority, template_key, status, sent_at, metadata, created_at)
+       VALUES ('outbound', $1, $2, 1, NULL, $3, $4, $5::jsonb, NOW())
        RETURNING id`,
-      [phone, body, status, sentAt, providerMsgId]
+      [phone, body, status, sentAt, metadataJson]
     );
 
     const messageId = insertRes.rows[0]?.id;
