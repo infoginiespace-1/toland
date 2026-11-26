@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -1311,6 +1311,27 @@ export type Database = {
         }
         Relationships: []
       }
+      wa_auth_keys: {
+        Row: {
+          key_id: string
+          session_id: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          key_id: string
+          session_id?: string
+          updated_at?: string
+          value: Json
+        }
+        Update: {
+          key_id?: string
+          session_id?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: []
+      }
       wa_autoreply_rules: {
         Row: {
           created_at: string
@@ -1392,32 +1413,50 @@ export type Database = {
       }
       wa_messages: {
         Row: {
+          attempts: number
           body: string
           created_at: string
           direction: string
           error: string | null
           id: string
+          max_attempts: number
+          metadata: Json
           phone: string
+          priority: number
+          scheduled_at: string
+          sent_at: string | null
           status: string
           template_key: string | null
         }
         Insert: {
+          attempts?: number
           body: string
           created_at?: string
           direction?: string
           error?: string | null
           id?: string
+          max_attempts?: number
+          metadata?: Json
           phone: string
+          priority?: number
+          scheduled_at?: string
+          sent_at?: string | null
           status?: string
           template_key?: string | null
         }
         Update: {
+          attempts?: number
           body?: string
           created_at?: string
           direction?: string
           error?: string | null
           id?: string
+          max_attempts?: number
+          metadata?: Json
           phone?: string
+          priority?: number
+          scheduled_at?: string
+          sent_at?: string | null
           status?: string
           template_key?: string | null
         }
@@ -1483,11 +1522,14 @@ export type Database = {
         Row: {
           autoreply_enabled: boolean
           daily_cap: number
+          failure_streak: number
+          failure_threshold: number
           fallback_to_cloud_api: boolean
           hourly_cap: number
           id: string
           max_delay_s: number
           min_delay_s: number
+          queue_paused: boolean
           quiet_hours_end: string
           quiet_hours_start: string
           updated_at: string
@@ -1497,11 +1539,14 @@ export type Database = {
         Insert: {
           autoreply_enabled?: boolean
           daily_cap?: number
+          failure_streak?: number
+          failure_threshold?: number
           fallback_to_cloud_api?: boolean
           hourly_cap?: number
           id?: string
           max_delay_s?: number
           min_delay_s?: number
+          queue_paused?: boolean
           quiet_hours_end?: string
           quiet_hours_start?: string
           updated_at?: string
@@ -1511,11 +1556,14 @@ export type Database = {
         Update: {
           autoreply_enabled?: boolean
           daily_cap?: number
+          failure_streak?: number
+          failure_threshold?: number
           fallback_to_cloud_api?: boolean
           hourly_cap?: number
           id?: string
           max_delay_s?: number
           min_delay_s?: number
+          queue_paused?: boolean
           quiet_hours_end?: string
           quiet_hours_start?: string
           updated_at?: string
