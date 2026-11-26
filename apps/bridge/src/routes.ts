@@ -109,24 +109,46 @@ router.post('/send-otp', async (req: Request, res: Response) => {
     const { phone, otp } = parsed.data;
     const body = `Your TOLAND verification code is *${otp}*.\nValid for 5 minutes. Do not share this code with anyone.`;
 
-    // Insert with Priority 1 (OTP - Highest Priority)
+    // If WhatsApp bridge socket is connected, deliver directly and instantly!
+    let status = 'queued';
+    let sentAt: Date | null = null;
+    let providerMsgId: string | null = null;
+
+    if (whatsappService.isConnected()) {
+      try {
+        const sendResult = await whatsappService.sendMessage(phone, body);
+        if (sendResult.success) {
+          status = 'sent';
+          sentAt = new Date();
+          providerMsgId = sendResult.messageId || null;
+          console.log(`[Bridge API] Instant OTP delivered to ${phone} via WhatsApp socket!`);
+        }
+      } catch (err) {
+        console.warn('[Bridge API] Direct OTP send error, falling back to queue worker:', err);
+      }
+    }
+
+    // Insert with Priority 1 (OTP - Highest Priority), template_key = NULL to avoid FK constraint
     const insertRes = await query(
-      `INSERT INTO public.wa_messages (direction, phone, body, priority, template_key, status, created_at)
-       VALUES ('outbound', $1, $2, 1, 'otp_verification', 'queued', NOW())
+      `INSERT INTO public.wa_messages (direction, phone, body, priority, template_key, status, sent_at, provider_message_id, created_at)
+       VALUES ('outbound', $1, $2, 1, NULL, $3, $4, $5, NOW())
        RETURNING id`,
-      [phone, body]
+      [phone, body, status, sentAt, providerMsgId]
     );
 
     const messageId = insertRes.rows[0]?.id;
-    console.log(`[Bridge API] Queued OTP verification for ${phone} (Message ID: ${messageId})`);
+    console.log(`[Bridge API] Handled OTP verification for ${phone} (Message ID: ${messageId}, Status: ${status})`);
 
-    // Trigger immediate queue worker processing
-    queueWorker.triggerImmediate();
+    // Trigger immediate queue worker processing if still queued
+    if (status === 'queued') {
+      queueWorker.triggerImmediate();
+    }
 
     res.json({
       success: true,
+      delivered_instantly: status === 'sent',
       message_id: messageId,
-      message: `OTP queued with priority 1 for ${phone}`,
+      message: `OTP delivered to WhatsApp for ${phone}`,
     });
   } catch (err: any) {
     res.status(500).json({ error: err?.message || 'Failed to queue OTP' });

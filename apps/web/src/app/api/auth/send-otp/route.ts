@@ -44,43 +44,47 @@ export async function POST(request: Request) {
       console.error('Failed to store OTP in database:', dbError);
     }
 
-    // 2. Queue in wa_messages table for WhatsApp bridge
-    const messageText = `Your TOLAND verification code is ${otp}. Valid for 10 minutes. Sheikhpura (Bihar).`;
-    await (supabaseAdmin as any).from('wa_messages').insert({
-      phone: formattedPhone,
-      message: messageText,
-      priority: 1, // High priority
-      status: 'queued',
-      metadata: { type: 'otp', code: otp },
-    });
+    // 2. Deliver directly via WhatsApp Bridge
+    const bridgeUrl = process.env.WHATSAPP_BRIDGE_URL || 'https://toland-whatsapp-bridge.onrender.com';
+    let bridgeDelivered = false;
 
-    // 3. Attempt direct socket push to WhatsApp bridge if configured
-    const bridgeUrl = process.env.WHATSAPP_BRIDGE_URL;
-    if (bridgeUrl) {
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 2500);
-        await fetch(`${bridgeUrl}/send-otp`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-bridge-secret': process.env.WHATSAPP_BRIDGE_SECRET || 'toland_bridge_secret_dev',
-          },
-          body: JSON.stringify({ phone: formattedPhone, otp }),
-          signal: controller.signal,
-        });
-        clearTimeout(timeout);
-      } catch (e) {
-        // Bridge may be queueing or offline, proceed safely
-        console.log('[send-otp] Bridge push attempted:', (e as any)?.message);
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 6000);
+      const bridgeRes = await fetch(`${bridgeUrl}/send-otp`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-bridge-secret': process.env.WHATSAPP_BRIDGE_SECRET || 'toland_bridge_secret_dev',
+        },
+        body: JSON.stringify({ phone: formattedPhone, otp }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      if (bridgeRes.ok) {
+        bridgeDelivered = true;
       }
+    } catch (e) {
+      console.log('[send-otp] Bridge push error, falling back to database queue:', (e as any)?.message);
+    }
+
+    // 3. Fallback queue in wa_messages if bridge was offline
+    if (!bridgeDelivered) {
+      const messageBody = `Your TOLAND verification code is *${otp}*.\nValid for 5 minutes. Do not share this code with anyone.`;
+      await (supabaseAdmin as any).from('wa_messages').insert({
+        direction: 'outbound',
+        phone: formattedPhone,
+        body: messageBody,
+        priority: 1, // High priority
+        status: 'queued',
+        metadata: { type: 'otp', code: otp },
+      });
     }
 
     return NextResponse.json({
       success: true,
       message: '6-digit OTP code sent to your WhatsApp number',
       phone: formattedPhone,
-      testOtp: otp, // Displayed in helper chip for instant login
     });
   } catch (err: any) {
     console.error('Error in /api/auth/send-otp:', err);

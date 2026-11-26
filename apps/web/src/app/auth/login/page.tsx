@@ -109,11 +109,8 @@ function LoginFormContent() {
       setPhone(formattedPhone);
       setWaStep('otp');
       setCountdown(60);
-      if (data.testOtp) {
-        setSentOtpHint(data.testOtp);
-        setOtp(data.testOtp); // Auto-fill for seamless testing
-      }
-      setSuccessMsg('Verification code generated and queued for WhatsApp delivery!');
+      setOtp(''); // Require manual entry from WhatsApp message
+      setSuccessMsg(`6-digit verification code sent to your WhatsApp on ${formattedPhone}!`);
     } catch (err: any) {
       console.error('Send OTP Error:', err);
       setError(err.message || 'Failed to send OTP. Please check your number.');
@@ -412,36 +409,15 @@ function LoginFormContent() {
                 )}
               </button>
 
-              <div className="text-center pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAdminPin(true)}
-                  className="text-xs text-muted hover:text-primary transition-colors flex items-center justify-center gap-1.5 mx-auto"
-                >
-                  <Lock className="w-3.5 h-3.5" />
-                  <span>Admin Master PIN access</span>
-                </button>
-              </div>
             </form>
           ) : (
             <form onSubmit={handleVerifyWhatsAppOtp} className="space-y-6">
-              {sentOtpHint && (
-                <div className="p-3 bg-accent/10 border border-accent/30 rounded-lg flex items-center justify-between text-xs text-accent">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>
-                      Generated OTP: <strong className="tracking-widest font-mono text-sm">{sentOtpHint}</strong>
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setOtp(sentOtpHint)}
-                    className="underline hover:text-accent font-semibold cursor-pointer"
-                  >
-                    Auto-fill
-                  </button>
-                </div>
-              )}
+              <div className="p-3 bg-accent/10 border border-accent/20 rounded-lg flex items-center gap-2.5 text-xs text-text">
+                <MessageSquare className="w-4 h-4 text-accent shrink-0" />
+                <span>
+                  6-digit verification code has been sent to your WhatsApp on <strong className="font-mono text-primary font-bold">{phone}</strong>.
+                </span>
+              </div>
 
               <div>
                 <label htmlFor="otp" className="block text-sm font-semibold text-text mb-2">

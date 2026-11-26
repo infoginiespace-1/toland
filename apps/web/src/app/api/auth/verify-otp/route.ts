@@ -34,7 +34,7 @@ export async function POST(request: Request) {
       .order('created_at', { ascending: false })
       .limit(1);
 
-    const isValidOtp = (otpRecords && otpRecords.length > 0) || otp === '123456';
+    const isValidOtp = Boolean(otpRecords && otpRecords.length > 0);
 
     if (!isValidOtp) {
       return NextResponse.json(
