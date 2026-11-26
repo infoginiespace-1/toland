@@ -17,7 +17,7 @@ export async function POST(request: Request) {
       ? phone
       : `91${phone.slice(-10)}`;
 
-    const bridgeUrl = process.env.WHATSAPP_BRIDGE_URL || 'http://localhost:8080';
+    const bridgeUrl = process.env.WHATSAPP_BRIDGE_URL || 'https://toland-whatsapp-bridge.onrender.com';
     const secret = process.env.WHATSAPP_BRIDGE_SECRET || 'toland_bridge_secret_dev';
 
     const res = await fetch(`${bridgeUrl}/pair-code`, {

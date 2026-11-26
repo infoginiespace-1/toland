@@ -24,9 +24,11 @@ export default async function AdminLayout({
     redirect('/');
   }
 
+  const displayName = user.user_metadata?.name || user.email || user.phone || 'Admin';
+
   return (
     <div className="min-h-screen bg-[#F0F7F2] flex flex-col lg:flex-row font-sans">
-      <AdminSidebar userPhone={user.phone || 'Admin'} userRole={role} />
+      <AdminSidebar userPhone={displayName} userRole={role} />
       <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 overflow-y-auto">
         <div className="max-w-7xl mx-auto space-y-6">
           {children}

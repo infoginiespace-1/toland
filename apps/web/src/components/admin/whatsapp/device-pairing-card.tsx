@@ -32,8 +32,31 @@ export function DevicePairingCard({ initialSession }: DevicePairingCardProps) {
 
   const supabase = createClient();
 
-  // 1. Subscribe to Supabase Realtime updates on wa_sessions
+  // 1. Subscribe to Supabase Realtime updates on wa_sessions + Active Live Polling
   useEffect(() => {
+    const checkStatus = async () => {
+      try {
+        const res = await fetch('/api/admin/whatsapp/status');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.status) {
+            setSession((prev: any) => ({
+              ...(prev || {}),
+              status: data.status,
+              connected_phone: data.connected_phone || prev?.connected_phone,
+              qr: data.qr || prev?.qr,
+              last_seen: data.last_seen || prev?.last_seen,
+            }));
+          }
+        }
+      } catch {
+        // Silently retry on next interval
+      }
+    };
+
+    checkStatus();
+    const interval = setInterval(checkStatus, 4000);
+
     const channel = supabase
       .channel('wa_sessions_realtime')
       .on(
@@ -48,6 +71,7 @@ export function DevicePairingCard({ initialSession }: DevicePairingCardProps) {
       .subscribe();
 
     return () => {
+      clearInterval(interval);
       supabase.removeChannel(channel);
     };
   }, [supabase]);

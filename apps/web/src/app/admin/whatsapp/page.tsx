@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { DevicePairingCard } from '@/components/admin/whatsapp/device-pairing-card';
 import {
   MessageSquare,
@@ -20,7 +21,12 @@ import {
 export const dynamic = 'force-dynamic';
 
 export default async function AdminWhatsAppPage() {
-  const supabase = createClient();
+  let supabase: any;
+  try {
+    supabase = createAdminClient();
+  } catch {
+    supabase = createClient();
+  }
 
   // Fetch session data
   const { data: sessionData } = await supabase
@@ -30,7 +36,31 @@ export default async function AdminWhatsAppPage() {
     .limit(1)
     .single();
 
-  const session = sessionData as any;
+  let session = sessionData as any;
+
+  // Direct check with live WhatsApp bridge to ensure 100% accurate status
+  try {
+    const bridgeUrl = process.env.WHATSAPP_BRIDGE_URL || 'https://toland-whatsapp-bridge.onrender.com';
+    const secret = process.env.WHATSAPP_BRIDGE_SECRET || 'toland_bridge_secret_dev';
+    const bridgeRes = await fetch(`${bridgeUrl}/status`, {
+      headers: { 'x-bridge-secret': secret },
+      cache: 'no-store',
+      next: { revalidate: 0 },
+    });
+    if (bridgeRes.ok) {
+      const bridgeData = await bridgeRes.json();
+      if (bridgeData.status) {
+        session = {
+          ...(session || {}),
+          status: bridgeData.status,
+          connected_phone: bridgeData.connected_phone || session?.connected_phone,
+          last_seen: bridgeData.last_seen || session?.last_seen,
+        };
+      }
+    }
+  } catch {
+    // Bridge offline or uncontactable, keep DB session
+  }
 
   // Fetch settings data
   const { data: settingsData } = await supabase
