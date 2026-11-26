@@ -25,6 +25,7 @@ supabase/.temp/
 # Production builds
 dist/
 build/
+*.tsbuildinfo
 
 # Logs
 npm-debug.log*
