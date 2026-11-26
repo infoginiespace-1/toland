@@ -13,6 +13,10 @@ out/
 .env.production
 !.env.example
 
+# Vercel
+.vercel
+apps/web/.vercel
+
 # Supabase
 .supabase/
 supabase/.branches/
@@ -38,3 +42,6 @@ Thumbs.db
 auth_info_baileys/
 sessions/
 *.session.json
+
+.vercel
+.env*
