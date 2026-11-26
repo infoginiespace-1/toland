@@ -8,7 +8,7 @@ on:
 
 jobs:
   verify:
-    name: Lint, Typecheck & Test
+    name: Lint, Test, Typecheck & Build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -41,5 +41,15 @@ jobs:
       - name: Install Dependencies
         run: pnpm install --no-frozen-lockfile
 
-      - name: Typecheck
+      - name: Run Automated Test Suites
+        run: pnpm test
+
+      - name: Monorepo Typecheck
         run: pnpm run typecheck
+
+      - name: Next.js Production Build
+        run: pnpm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://zgmsfnedrgthinykkgxk.supabase.co' }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'dummy_anon_key_for_ci_build' }}
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL || 'https://toland-web.vercel.app' }}

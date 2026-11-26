@@ -1,6 +1,7 @@
 {
   "name": "toland",
   "version": "0.1.0",
+  "type": "module",
   "private": true,
   "description": "TOLAND — E-Commerce Storefront + Admin ERP/CRM + WhatsApp Automation",
   "scripts": {
@@ -8,7 +9,7 @@
     "dev": "pnpm --filter \"@toland/web\" dev",
     "lint": "pnpm --filter \"@toland/*\" lint",
     "typecheck": "pnpm --filter \"@toland/*\" typecheck",
-    "test": "pnpm --filter \"@toland/*\" test"
+    "test": "node --test tests/*.test.js"
   },
   "devDependencies": {
     "typescript": "^5.6.3",
