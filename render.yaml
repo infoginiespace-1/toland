@@ -1,17 +1,19 @@
 services:
   - type: web
     name: toland-whatsapp-bridge
-    env: node
-    plan: starter
-    buildCommand: pnpm --filter "@toland/bridge..." install && pnpm --filter "@toland/bridge" build
-    startCommand: node apps/bridge/dist/index.js
-    healthCheckPath: /status
+    env: docker
+    plan: free
+    region: singapore
+    healthCheckPath: /health
+    autoDeploy: true
     envVars:
       - key: PORT
         value: 8080
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
-        sync: false
+        value: postgresql://postgres.uuqnczklpmfvscrpziet:TolandProd2026%21Db%23Sec8@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?sslmode=require
       - key: WHATSAPP_BRIDGE_SECRET
-        sync: false
+        value: toland_bridge_secret_dev
+      - key: WHATSAPP_SESSION_ID
+        value: default

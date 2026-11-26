@@ -83,9 +83,12 @@ export function DevicePairingCard({ initialSession }: DevicePairingCardProps) {
         text: 'Pairing code generated! Open WhatsApp on your phone to link.',
       });
     } catch (err: any) {
+      const msg = err.message === 'fetch failed'
+        ? 'WhatsApp Bridge is offline or starting up on Render. Please wait a moment.'
+        : (err.message || 'Error generating pairing code.');
       setFeedbackMsg({
         type: 'error',
-        text: err.message || 'Error generating pairing code.',
+        text: msg,
       });
     } finally {
       setLoadingCode(false);

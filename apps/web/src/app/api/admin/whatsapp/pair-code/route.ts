@@ -46,7 +46,7 @@ export async function POST(request: Request) {
   } catch (err: any) {
     console.error('Error in /api/admin/whatsapp/pair-code:', err);
     return NextResponse.json(
-      { error: err.message || 'WhatsApp bridge is unreachable. Please ensure bridge daemon is running.' },
+      { error: 'WhatsApp bridge is currently offline or deploying. Please verify service status.' },
       { status: 503 }
     );
   }
