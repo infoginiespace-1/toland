@@ -10,7 +10,6 @@ import {
   Ruler,
   Truck,
   RotateCcw,
-  Sparkles,
   Layers,
 } from 'lucide-react';
 
@@ -56,8 +55,14 @@ export function FloatingWhatsAppConcierge() {
     setIsOpen(false);
   };
 
+  const isProductDetail = pathname.startsWith('/products/') && pathname !== '/products';
+
   return (
-    <div className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-40 flex flex-col items-end">
+    <div
+      className={`fixed right-4 sm:bottom-6 sm:right-6 z-40 flex flex-col items-end ${
+        isProductDetail ? 'bottom-32' : 'bottom-20'
+      }`}
+    >
       {/* Concierge Modal Card */}
       {isOpen && (
         <div className="mb-3 w-80 sm:w-96 rounded-3xl bg-white border border-border shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200">

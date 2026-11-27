@@ -96,29 +96,42 @@ export default function AccountPage() {
 
   if (!user) {
     return (
-      <div className="max-w-md mx-auto my-16 p-8 rounded-3xl bg-white border border-border shadow-card text-center space-y-5">
-        <div className="w-16 h-16 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto text-primary">
-          <User className="w-8 h-8" />
-        </div>
-        <div className="space-y-2">
-          <h1 className="text-xl font-bold text-text">Customer Account Portal</h1>
-          <p className="text-xs text-muted leading-relaxed">
-            Please log in with your registered mobile number or email to view past orders, track live parcels, and request doorstep exchanges.
-          </p>
-        </div>
-        <div className="pt-2">
-          <Link
-            href="/auth/login"
-            className="w-full py-3.5 rounded-xl bg-primary text-white text-xs font-bold uppercase tracking-wider hover:bg-primary-hover shadow-sm flex items-center justify-center gap-2"
-          >
-            <span>Sign In to My Account</span>
-            <ArrowRight className="w-4 h-4" />
-          </Link>
-        </div>
-        <div className="pt-2 border-t border-slate-100">
-          <Link href="/track-order" className="text-xs font-semibold text-primary hover:underline">
-            Don&apos;t have an account? Track Order with Phone Number &rarr;
-          </Link>
+      <div className="max-w-md mx-auto my-12 px-4">
+        <div className="p-8 rounded-3xl bg-white border border-border shadow-card text-center space-y-5">
+          <div className="w-16 h-16 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto text-primary">
+            <User className="w-8 h-8" />
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-xl font-bold text-text">Customer Profile &amp; Orders</h1>
+            <p className="text-xs text-muted leading-relaxed">
+              Sign in with your registered mobile number or email to manage your orders, download GST invoices, or track live parcels.
+            </p>
+          </div>
+          <div className="space-y-3 pt-2">
+            <Link
+              href="/auth/login"
+              className="w-full py-3 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary-hover shadow-sm flex items-center justify-center gap-2 transition-colors"
+            >
+              <span>Sign In to My Account</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+
+            <Link
+              href="/track-order"
+              className="w-full py-3 rounded-xl bg-surface-alt border border-border text-text text-xs font-semibold hover:border-primary hover:text-primary flex items-center justify-center gap-2 transition-colors"
+            >
+              <Truck className="w-4 h-4 text-primary" />
+              <span>Track Order via Phone / Order ID</span>
+            </Link>
+
+            <Link
+              href="/returns"
+              className="w-full py-2.5 rounded-xl text-xs font-medium text-muted hover:text-text flex items-center justify-center gap-1.5 transition-colors"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Request 7-Day Doorstep Exchange / Return</span>
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -137,33 +150,35 @@ export default function AccountPage() {
       {/* Account Profile Header Card */}
       <div className="p-6 sm:p-8 rounded-3xl bg-slate-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-6 shadow-xl">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-emerald-400 text-xl font-black shrink-0">
+          <div className="w-14 h-14 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-emerald-400 text-lg font-bold shrink-0">
             {displayName.charAt(0).toUpperCase()}
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-black">{displayName}</h1>
-              <span className="px-2.5 py-0.5 rounded-full text-3xs font-bold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight">{displayName}</h1>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
                 Verified Customer
               </span>
             </div>
-            <p className="text-xs text-white/70 mt-1 flex items-center gap-3">
+            <p className="text-xs text-white/70 mt-1 flex flex-wrap items-center gap-3">
               {user.email && <span>{user.email}</span>}
               {user.phone && <span>· {user.phone}</span>}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
           <Link
-            href="/products"
-            className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-colors"
+            href="/track-order"
+            className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-sm"
           >
-            Browse Denim
+            <Truck className="w-3.5 h-3.5" />
+            <span>Track Live Order</span>
           </Link>
           <button
+            type="button"
             onClick={handleSignOut}
-            className="px-4 py-2.5 rounded-xl bg-rose-600/30 hover:bg-rose-600/50 text-rose-200 border border-rose-500/30 text-xs font-bold transition-colors flex items-center gap-1.5"
+            className="px-4 py-2.5 rounded-xl bg-rose-600/25 hover:bg-rose-600/40 text-rose-200 border border-rose-500/30 text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span>Sign Out</span>
@@ -172,7 +187,7 @@ export default function AccountPage() {
       </div>
 
       {/* Tabs Navigation */}
-      <div className="flex items-center gap-3 border-b border-border pb-1">
+      <div className="flex items-center gap-6 border-b border-border pb-1 overflow-x-auto whitespace-nowrap scrollbar-none">
         <button
           onClick={() => setActiveTab('orders')}
           className={`pb-3 text-xs font-bold transition-colors flex items-center gap-2 border-b-2 -mb-[5px] ${

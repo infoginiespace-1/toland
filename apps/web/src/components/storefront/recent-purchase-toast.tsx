@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { ShieldCheck, X, Sparkles, ShoppingBag } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { ShieldCheck, X, ShoppingBag } from 'lucide-react';
 
 interface PurchaseEvent {
   name: string;
@@ -23,6 +23,7 @@ const SAMPLE_PURCHASES: PurchaseEvent[] = [
 ];
 
 export function RecentPurchaseToast() {
+  const pathname = usePathname();
   const [currentIdx, setCurrentIdx] = useState(0);
   const [visible, setVisible] = useState(false);
   const [dismissed, setDismissed] = useState(false);
@@ -50,12 +51,12 @@ export function RecentPurchaseToast() {
     };
   }, [dismissed]);
 
-  if (dismissed || !visible) return null;
+  if (pathname.startsWith('/admin') || dismissed || !visible) return null;
 
   const current = SAMPLE_PURCHASES[currentIdx];
 
   return (
-    <div className="fixed bottom-20 md:bottom-6 left-4 md:left-6 z-30 max-w-sm bg-white/95 backdrop-blur-md rounded-2xl border border-border shadow-2xl p-3 flex items-center gap-3 animate-in slide-in-from-bottom-5 duration-300">
+    <div className="hidden sm:flex fixed bottom-6 left-6 z-30 max-w-sm bg-white/95 backdrop-blur-md rounded-2xl border border-border shadow-2xl p-3 items-center gap-3 animate-in slide-in-from-bottom-5 duration-300">
       <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
         <ShoppingBag className="w-5 h-5" />
       </div>

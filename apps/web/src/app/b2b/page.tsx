@@ -86,7 +86,7 @@ export default function B2BWholesalePage() {
           <Sparkles className="w-3.5 h-3.5 text-accent" />
           <span>Manufacturer Direct Wholesale</span>
         </div>
-        <h1 className="text-3xl sm:text-5xl font-black text-text tracking-tight">
+        <h1 className="text-3xl sm:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight">
           Partner with TOLAND for Factory-Direct Denim Supply
         </h1>
         <p className="text-sm sm:text-base text-muted leading-relaxed">

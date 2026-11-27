@@ -5,12 +5,8 @@ import { HeroSlider } from '@/components/storefront/hero-slider';
 import { TestimonialsSection } from '@/components/storefront/testimonials-section';
 import {
   ArrowRight,
-  ShieldCheck,
-  Truck,
   Sparkles,
-  Scissors,
   CheckCircle2,
-  Package,
   Layers,
   PhoneCall,
   Percent,
@@ -59,34 +55,34 @@ export default async function HomePage() {
   const reviews = (reviewsRes.data || []) as any[];
 
   return (
-    <div className="space-y-16 pb-20">
+    <div className="flex flex-col">
       {/* 1. HERO SECTION */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-surface-alt via-white to-white border-b border-border py-12 sm:py-20">
+      <section className="relative overflow-hidden bg-gradient-to-b from-surface-alt via-white to-white border-b border-border py-10 sm:py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
             {/* Left Content */}
-            <div className="lg:col-span-7 space-y-6">
+            <div className="lg:col-span-7 space-y-5">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
                 <Sparkles className="w-3.5 h-3.5 text-accent" />
                 <span>Direct From Sheikhpura Manufacturing Facility</span>
               </div>
 
-              <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-text leading-[1.1]">
+              <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-slate-900 leading-[1.15]">
                 Heavyweight Denim. <br />
                 <span className="text-primary">
                   Factory Direct Value.
                 </span>
               </h1>
 
-              <p className="text-base sm:text-lg text-muted max-w-2xl leading-relaxed">
+              <p className="text-sm sm:text-base text-muted max-w-xl leading-relaxed">
                 We cut, stitch, stone-wash, and finish 100% ring-spun cotton denim jeans at our factory in Sheikhpura,
                 Barbigha (Bihar). Authentic manufacturer pricing with zero middleman markups.
               </p>
 
-              <div className="flex flex-wrap items-center gap-4 pt-2">
+              <div className="flex flex-wrap items-center gap-3.5 pt-2">
                 <Link
                   href="/products"
-                  className="px-6 py-3.5 rounded-xl bg-slate-900 text-white text-sm font-semibold tracking-normal hover:bg-slate-800 shadow-card hover:shadow-card-hover transition-all flex items-center gap-2"
+                  className="px-6 py-3 rounded-xl bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 shadow-card hover:shadow-card-hover transition-all flex items-center gap-2"
                 >
                   <span>Shop Denim Collection</span>
                   <ArrowRight className="w-4 h-4" />
@@ -94,9 +90,9 @@ export default async function HomePage() {
 
                 <Link
                   href="/b2b"
-                  className="px-6 py-3.5 rounded-xl bg-white border border-border text-text text-sm font-semibold hover:bg-surface-alt transition-colors flex items-center gap-2 shadow-subtle"
+                  className="px-6 py-3 rounded-xl bg-white border border-border text-slate-800 text-sm font-semibold hover:bg-surface-alt transition-colors flex items-center gap-2 shadow-subtle"
                 >
-                  <span>Wholesale & B2B Tiers</span>
+                  <span>Wholesale &amp; B2B Tiers</span>
                 </Link>
               </div>
 
@@ -126,11 +122,11 @@ export default async function HomePage() {
       </section>
 
       {/* 2. CATEGORIES OVERVIEW */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
         <div className="flex items-end justify-between mb-8">
           <div>
             <span className="text-xs font-semibold uppercase tracking-wider text-accent">Browse By Fit</span>
-            <h2 className="text-2xl sm:text-3xl font-bold text-text tracking-tight mt-1">Denim Categories</h2>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mt-1">Denim Categories</h2>
           </div>
           <Link
             href="/products"
@@ -147,19 +143,24 @@ export default async function HomePage() {
               <Link
                 key={category.id}
                 href={`/products?category=${category.slug}`}
-                className="group relative p-5 rounded-xl bg-white border border-border hover:border-slate-300 hover:shadow-card transition-all flex flex-col justify-between min-h-[150px]"
+                className="group relative p-5 rounded-2xl bg-gradient-to-br from-white to-surface-alt border border-border hover:border-primary/40 hover:shadow-card transition-all flex flex-col justify-between min-h-[164px]"
               >
-                <div className="space-y-1">
-                  <span className="text-[10px] font-medium uppercase tracking-wider text-muted">
-                    Sheikhpura Factory
-                  </span>
-                  <h3 className="text-base font-bold text-text group-hover:text-primary transition-colors">
-                    {category.name}
-                  </h3>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+                      Sheikhpura Cut
+                    </span>
+                    <h3 className="text-sm sm:text-base font-bold text-slate-900 group-hover:text-primary transition-colors">
+                      {category.name}
+                    </h3>
+                  </div>
+                  <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                    <Layers className="w-4 h-4" />
+                  </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-4 border-t border-border/60 text-xs font-semibold text-primary">
-                  <span>Explore Collection</span>
+                <div className="flex items-center justify-between pt-4 mt-4 border-t border-border/70 text-xs font-semibold text-primary">
+                  <span>Explore Fit</span>
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </div>
               </Link>
@@ -171,14 +172,14 @@ export default async function HomePage() {
       </section>
 
       {/* 3. FEATURED PRODUCTS GRID */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pb-12 sm:pb-16">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-4">
           <div>
             <span className="text-xs font-semibold uppercase tracking-wider text-accent">Signature Styles</span>
-            <h2 className="text-2xl sm:text-3xl font-bold text-text tracking-tight mt-1">Featured Denim</h2>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mt-1">Featured Denim</h2>
             <p className="text-xs text-muted mt-1">Built to withstand years of hard wear. Factory direct pricing.</p>
           </div>
-          <div className="inline-flex items-center gap-2 text-xs font-semibold text-primary bg-primary/10 px-3 py-1.5 rounded-full border border-primary/20">
+          <div className="inline-flex items-center gap-2 text-xs font-semibold text-primary bg-primary/10 px-3 py-1.5 rounded-full border border-primary/20 w-fit">
             <Percent className="w-3.5 h-3.5" />
             <span>Up to 50% Off Retail Prices</span>
           </div>
@@ -280,11 +281,11 @@ export default async function HomePage() {
       </section>
 
       {/* 4. MANUFACTURING FACILITY SPOTLIGHT */}
-      <section className="bg-surface-alt border-y border-border py-16">
+      <section className="bg-surface-alt border-y border-border py-12 sm:py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-12">
-            <span className="text-xs font-bold uppercase tracking-wider text-accent">Vertical Manufacturing</span>
-            <h2 className="text-3xl font-black text-text tracking-tight mt-1">
+          <div className="text-center max-w-2xl mx-auto mb-10">
+            <span className="text-xs font-semibold uppercase tracking-wider text-accent">Vertical Manufacturing</span>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mt-1">
               Sheikhpura In-House Production Process
             </h2>
             <p className="text-xs sm:text-sm text-muted mt-2">
@@ -293,44 +294,44 @@ export default async function HomePage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            <div className="p-5 rounded-xl bg-surface border border-border space-y-2">
+            <div className="p-5 rounded-2xl bg-white border border-border shadow-2xs space-y-2">
               <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
                 1
               </div>
-              <h3 className="text-sm font-bold text-text">Pattern Cutting</h3>
-              <p className="text-xs text-muted">Precision computer-guided fabric cutting to avoid warp and bias twist.</p>
+              <h3 className="text-sm font-bold text-slate-900">Pattern Cutting</h3>
+              <p className="text-xs text-muted leading-relaxed">Precision computer-guided fabric cutting to avoid warp and bias twist.</p>
             </div>
 
-            <div className="p-5 rounded-xl bg-surface border border-border space-y-2">
+            <div className="p-5 rounded-2xl bg-white border border-border shadow-2xs space-y-2">
               <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
                 2
               </div>
-              <h3 className="text-sm font-bold text-text">Heavy Stitching</h3>
-              <p className="text-xs text-muted">Core-spun poly-cotton thread with reinforced double-needle chainstitch.</p>
+              <h3 className="text-sm font-bold text-slate-900">Heavy Stitching</h3>
+              <p className="text-xs text-muted leading-relaxed">Core-spun poly-cotton thread with reinforced double-needle chainstitch.</p>
             </div>
 
-            <div className="p-5 rounded-xl bg-surface border border-border space-y-2">
+            <div className="p-5 rounded-2xl bg-white border border-border shadow-2xs space-y-2">
               <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
                 3
               </div>
-              <h3 className="text-sm font-bold text-text">Stone Washing</h3>
-              <p className="text-xs text-muted">Natural pumice and eco-enzymes creating authentic vintage fades.</p>
+              <h3 className="text-sm font-bold text-slate-900">Stone Washing</h3>
+              <p className="text-xs text-muted leading-relaxed">Natural pumice and eco-enzymes creating authentic vintage fades.</p>
             </div>
 
-            <div className="p-5 rounded-xl bg-surface border border-border space-y-2">
+            <div className="p-5 rounded-2xl bg-white border border-border shadow-2xs space-y-2">
               <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
                 4
               </div>
-              <h3 className="text-sm font-bold text-text">Hardware & Rivets</h3>
-              <p className="text-xs text-muted">Solid brass shanks, heavy-duty zippers, and stress-point bar-tacks.</p>
+              <h3 className="text-sm font-bold text-slate-900">Hardware &amp; Rivets</h3>
+              <p className="text-xs text-muted leading-relaxed">Solid brass shanks, heavy-duty zippers, and stress-point bar-tacks.</p>
             </div>
 
-            <div className="p-5 rounded-xl bg-surface border border-border space-y-2">
+            <div className="p-5 rounded-2xl bg-white border border-border shadow-2xs space-y-2">
               <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
                 5
               </div>
-              <h3 className="text-sm font-bold text-text">Final QC & Dispatch</h3>
-              <p className="text-xs text-muted">100% individual inspection before boxed dispatch from our warehouse.</p>
+              <h3 className="text-sm font-bold text-slate-900">Final QC &amp; Dispatch</h3>
+              <p className="text-xs text-muted leading-relaxed">100% individual inspection before boxed dispatch from our warehouse.</p>
             </div>
           </div>
         </div>
@@ -340,33 +341,33 @@ export default async function HomePage() {
       <TestimonialsSection reviews={reviews} />
 
       {/* 6. B2B WHOLESALE BANNER */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="rounded-3xl bg-gradient-to-r from-primary to-primary-hover p-8 sm:p-12 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-8">
-          <div className="max-w-xl space-y-3">
-            <span className="inline-block px-3 py-1 rounded-full text-2xs font-bold uppercase tracking-wider bg-white/10 text-white border border-white/20">
-              For Retailers & Wholesale Distributors
+      <section className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+        <div className="rounded-3xl bg-gradient-to-r from-primary to-primary-hover p-8 sm:p-10 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-8">
+          <div className="max-w-xl space-y-2.5">
+            <span className="inline-block px-3 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wider bg-white/10 text-white border border-white/20">
+              For Retailers &amp; Wholesale Distributors
             </span>
-            <h2 className="text-2xl sm:text-4xl font-black tracking-tight leading-tight">
+            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight leading-tight">
               Direct-from-Mill Wholesale Pricing
             </h2>
-            <p className="text-xs sm:text-sm text-white/80 leading-relaxed">
+            <p className="text-xs sm:text-sm text-white/85 leading-relaxed">
               Order bulk denim lots (50 to 5,000+ pieces) with tiered wholesale pricing, custom tags, and guaranteed
               dispatch timelines directly from our Sheikhpura factory.
             </p>
           </div>
 
-          <div className="shrink-0 flex flex-col sm:flex-row gap-3">
+          <div className="shrink-0 flex flex-col sm:flex-row gap-3 w-full md:w-auto">
             <Link
               href="/b2b"
-              className="px-6 py-3.5 rounded-xl bg-white text-primary hover:bg-surface text-sm font-black uppercase tracking-wide shadow-md transition-colors text-center"
+              className="px-6 py-3 rounded-xl bg-white text-primary hover:bg-surface text-xs sm:text-sm font-bold shadow-md transition-colors text-center"
             >
-              Request B2B Catalog
+              Calculate B2B Tier Pricing
             </Link>
             <a
               href="https://wa.me/918797186001?text=Hello%20TOLAND,%20I%20am%20interested%20in%20wholesale%20denim%20orders"
               target="_blank"
               rel="noopener noreferrer"
-              className="px-6 py-3.5 rounded-xl bg-success text-white hover:bg-success/90 text-sm font-bold transition-colors flex items-center justify-center gap-2"
+              className="px-6 py-3 rounded-xl bg-emerald-600 text-white hover:bg-emerald-500 text-xs sm:text-sm font-semibold transition-colors flex items-center justify-center gap-2 border border-white/15"
             >
               <PhoneCall className="w-4 h-4" />
               <span>WhatsApp Inquiries</span>

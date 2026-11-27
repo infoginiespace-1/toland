@@ -20,7 +20,7 @@ import {
 
 function ReturnsContent() {
   const searchParams = useSearchParams();
-  const initialOrderNo = searchParams.get('order_no') || '';
+  const initialOrderNo = searchParams.get('order_no') || searchParams.get('order') || '';
 
   const [activeTab, setActiveTab] = useState<'request' | 'policy'>('request');
   const [orderNo, setOrderNo] = useState(initialOrderNo);

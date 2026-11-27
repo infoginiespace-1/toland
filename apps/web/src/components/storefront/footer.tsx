@@ -130,16 +130,11 @@ export function StorefrontFooter() {
 
           {/* Wholesale & Factory */}
           <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-text mb-3">Wholesale & Factory</h3>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-text mb-3">Wholesale &amp; Factory</h3>
             <ul className="space-y-2 text-xs text-muted">
               <li>
                 <Link href="/b2b" className="hover:text-primary transition-colors font-semibold text-text flex items-center gap-1">
-                  <Sparkles className="w-3 h-3 text-accent" /> B2B Price Tiers
-                </Link>
-              </li>
-              <li>
-                <Link href="/b2b" className="hover:text-primary transition-colors">
-                  Bulk Inquiry Form
+                  <Sparkles className="w-3 h-3 text-accent" /> B2B Bulk Tiers &amp; Quote
                 </Link>
               </li>
               <li>
@@ -190,7 +185,7 @@ export function StorefrontFooter() {
         </div>
 
         {/* Bottom Copyright & GST */}
-        <div className="pt-8 mt-8 border-t border-border flex flex-col sm:flex-row items-center justify-between text-2xs text-muted gap-4">
+        <div className="pt-8 mt-8 pb-16 md:pb-0 border-t border-border flex flex-col sm:flex-row items-center justify-between text-2xs text-muted gap-4">
           <div>
             © {new Date().getFullYear()} TOLAND Private Limited. All rights reserved. GST Registered Denim Manufacturer.
           </div>

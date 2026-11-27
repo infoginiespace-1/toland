@@ -11,30 +11,58 @@ import {
   Menu,
   X,
   Phone,
-  Sparkles,
   User,
   ShieldCheck,
   LogOut,
-  Package,
   ChevronDown,
   Search,
   Truck,
   Heart,
+  RotateCcw,
+  ArrowRight,
+  LogIn,
 } from 'lucide-react';
 import { SearchModal } from '@/components/storefront/search-modal';
 import { WishlistDrawer } from '@/components/storefront/wishlist-drawer';
 import { MobileBottomNav } from '@/components/storefront/mobile-bottom-nav';
+
+const CATEGORY_LINKS = [
+  {
+    name: 'All Denim Collection',
+    desc: 'Complete Sheikhpura factory catalog',
+    href: '/products',
+  },
+  {
+    name: 'Slim Fit Denim',
+    desc: 'Tailored modern tapered silhouette',
+    href: '/products?category=slim-fit-denim',
+  },
+  {
+    name: 'Regular Straight Fit',
+    desc: 'Classic comfort everyday wear',
+    href: '/products?category=regular-straight',
+  },
+  {
+    name: 'Jackets & Tops',
+    desc: 'Heavyweight selvedge outerwear',
+    href: '/products?category=casual-jackets-shirts',
+  },
+];
 
 export function StorefrontNavbar() {
   const pathname = usePathname();
   const router = useRouter();
   const { itemCount } = useCart();
   const { itemCount: wishlistCount } = useWishlist();
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [wishlistOpen, setWishlistOpen] = useState(false);
+
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const categoriesRef = useRef<HTMLDivElement>(null);
 
   // Auth state
   const [user, setUser] = useState<any>(null);
@@ -44,7 +72,6 @@ export function StorefrontNavbar() {
   const supabase = createClient();
 
   useEffect(() => {
-    // 1. Check initial auth state
     async function loadUser() {
       try {
         const {
@@ -76,7 +103,6 @@ export function StorefrontNavbar() {
 
     loadUser();
 
-    // 2. Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -99,13 +125,18 @@ export function StorefrontNavbar() {
       setAuthLoading(false);
     });
 
-    // Close dropdown on outside click
     function handleClickOutside(event: MouseEvent) {
       if (
         dropdownRef.current &&
         !dropdownRef.current.contains(event.target as Node)
       ) {
         setUserDropdownOpen(false);
+      }
+      if (
+        categoriesRef.current &&
+        !categoriesRef.current.contains(event.target as Node)
+      ) {
+        setCategoriesOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -116,7 +147,13 @@ export function StorefrontNavbar() {
     };
   }, [supabase]);
 
-  // Handle Sign Out
+  // Close menus on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+    setUserDropdownOpen(false);
+    setCategoriesOpen(false);
+  }, [pathname]);
+
   const handleSignOut = async () => {
     setUserDropdownOpen(false);
     setMobileMenuOpen(false);
@@ -127,374 +164,407 @@ export function StorefrontNavbar() {
     router.refresh();
   };
 
-  // If in admin panel, navbar is handled by admin layout
   if (pathname.startsWith('/admin')) {
     return null;
   }
-
-  const navLinks = [
-    { name: 'All Denim', href: '/products' },
-    { name: 'Track Order', href: '/track-order' },
-    { name: 'Slim Fit', href: '/products?category=slim-fit-denim' },
-    { name: 'Straight Fit', href: '/products?category=regular-straight' },
-    { name: 'Jackets & Tops', href: '/products?category=casual-jackets-shirts' },
-    { name: 'B2B Wholesale', href: '/b2b' },
-    { name: 'Our Factory', href: '/about' },
-  ];
 
   const displayName =
     user?.user_metadata?.name ||
     user?.email?.split('@')[0] ||
     user?.phone ||
-    'My Account';
+    'Account';
 
   return (
     <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-border shadow-subtle">
-      {/* Top Announcement Ribbon - Sensex Style Right-to-Left Continuous Ticker */}
-      <div className="bg-primary text-white text-[11px] sm:text-xs font-semibold py-1.5 overflow-hidden group-marquee border-b border-primary-hover relative cursor-default">
+      {/* Top Announcement Ribbon - Continuous Smooth Ticker */}
+      <div className="bg-primary text-white text-[11px] font-medium py-1.5 overflow-hidden group-marquee border-b border-primary-hover relative cursor-default">
         <div className="animate-marquee-infinite flex items-center gap-10 whitespace-nowrap">
-          {/* Track 1 */}
           <div className="flex items-center gap-8 shrink-0">
             <span className="flex items-center gap-1.5">
-              <span>🏭</span> FACTORY DIRECT PREMIUM DENIM · SHEIKHPURA (BIHAR)
+              <span>🏭</span> FACTORY DIRECT DENIM · SHEIKHPURA (BIHAR)
             </span>
             <span className="text-white/40">✦</span>
             <span className="flex items-center gap-1.5">
-              <span>⚡</span> DISPATCH WITHIN 24 HOURS ACROSS INDIA
+              <span>⚡</span> 24-HOUR DISPATCH ACROSS INDIA
             </span>
             <span className="text-white/40">✦</span>
             <span className="flex items-center gap-1.5">
-              <span>📦</span> FREE EXPRESS SHIPPING ON PREPAID ORDERS OVER ₹999
+              <span>📦</span> FREE EXPRESS SHIPPING OVER ₹999
             </span>
             <span className="text-white/40">✦</span>
             <span className="flex items-center gap-1.5">
-              <span>💎</span> 100% COMBED RING-SPUN COTTON · IN-HOUSE STONEWASH
+              <span>🏷️</span> USE CODE <strong className="bg-white/20 px-1.5 py-0.5 rounded text-white font-semibold">TOLAND10</strong> FOR 10% OFF
             </span>
             <span className="text-white/40">✦</span>
             <span className="flex items-center gap-1.5">
-              <span>🏷️</span> USE CODE <strong className="bg-white/20 px-1.5 py-0.5 rounded text-white tracking-wider font-bold">TOLAND10</strong> FOR 10% OFF
-            </span>
-            <span className="text-white/40">✦</span>
-            <span className="flex items-center gap-1.5">
-              <span>🛡️</span> 7-DAY DOORSTEP EXCHANGE & AUTHENTIC WARRANTY
-            </span>
-            <span className="text-white/40">✦</span>
-            <span className="flex items-center gap-1.5">
-              <span>📞</span> WHATSAPP FACTORY DESK: +91 87971 86001
+              <span>🛡️</span> 7-DAY DOORSTEP SIZE EXCHANGE
             </span>
           </div>
-
-          {/* Track 2 (Seamless Infinite Duplicate) */}
           <div className="flex items-center gap-8 shrink-0" aria-hidden="true">
             <span className="flex items-center gap-1.5">
-              <span>🏭</span> FACTORY DIRECT PREMIUM DENIM · SHEIKHPURA (BIHAR)
+              <span>🏭</span> FACTORY DIRECT DENIM · SHEIKHPURA (BIHAR)
             </span>
             <span className="text-white/40">✦</span>
             <span className="flex items-center gap-1.5">
-              <span>⚡</span> DISPATCH WITHIN 24 HOURS ACROSS INDIA
+              <span>⚡</span> 24-HOUR DISPATCH ACROSS INDIA
             </span>
             <span className="text-white/40">✦</span>
             <span className="flex items-center gap-1.5">
-              <span>📦</span> FREE EXPRESS SHIPPING ON PREPAID ORDERS OVER ₹999
+              <span>📦</span> FREE EXPRESS SHIPPING OVER ₹999
             </span>
             <span className="text-white/40">✦</span>
             <span className="flex items-center gap-1.5">
-              <span>💎</span> 100% COMBED RING-SPUN COTTON · IN-HOUSE STONEWASH
+              <span>🏷️</span> USE CODE <strong className="bg-white/20 px-1.5 py-0.5 rounded text-white font-semibold">TOLAND10</strong> FOR 10% OFF
             </span>
             <span className="text-white/40">✦</span>
             <span className="flex items-center gap-1.5">
-              <span>🏷️</span> USE CODE <strong className="bg-white/20 px-1.5 py-0.5 rounded text-white tracking-wider font-bold">TOLAND10</strong> FOR 10% OFF
-            </span>
-            <span className="text-white/40">✦</span>
-            <span className="flex items-center gap-1.5">
-              <span>🛡️</span> 7-DAY DOORSTEP EXCHANGE & AUTHENTIC WARRANTY
-            </span>
-            <span className="text-white/40">✦</span>
-            <span className="flex items-center gap-1.5">
-              <span>📞</span> WHATSAPP FACTORY DESK: +91 87971 86001
+              <span>🛡️</span> 7-DAY DOORSTEP SIZE EXCHANGE
             </span>
           </div>
         </div>
       </div>
 
+      {/* Main Header Row */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo & Manufacturer Tag */}
+        <div className="flex items-center justify-between h-16 gap-4">
+          {/* Left: Mobile Menu Button + Brand Logo */}
           <div className="flex items-center gap-3">
             <button
+              type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 -ml-2 rounded-lg text-text hover:bg-surface-alt transition-colors"
-              aria-label="Toggle mobile menu"
+              className="md:hidden p-2 -ml-2 rounded-lg text-text hover:bg-surface-alt transition-colors cursor-pointer"
+              aria-label="Toggle Menu"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
 
-            <Link href="/" className="flex flex-col group">
-              <span className="text-xl sm:text-2xl font-extrabold tracking-tight text-text leading-none flex items-center">
+            <Link href="/" className="flex flex-col shrink-0">
+              <span className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 leading-none">
                 TOLAND
               </span>
-              <span className="text-[10px] tracking-widest font-semibold text-muted uppercase mt-0.5">
-                Denim & Casuals
+              <span className="text-[9px] tracking-[0.2em] font-semibold text-muted uppercase mt-0.5">
+                Denim &amp; Apparel
               </span>
             </Link>
           </div>
 
-          {/* Desktop Nav Links */}
-          <nav className="hidden md:flex items-center gap-7">
-            {navLinks.map((link) => {
-              const isActive = pathname === link.href;
-              return (
-                <Link
-                  key={link.name}
-                  href={link.href}
-                  className={`text-sm font-medium transition-colors hover:text-text ${
-                    isActive ? 'text-primary font-semibold border-b-2 border-primary pb-0.5' : 'text-muted'
-                  }`}
-                >
-                  {link.name}
-                </Link>
-              );
-            })}
-          </nav>
-
-          {/* Right Action Icons */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            {/* Search Trigger Button */}
-            <button
-              onClick={() => setSearchModalOpen(true)}
-              className="p-2 sm:px-2.5 sm:py-1.5 rounded-full text-text hover:bg-surface-alt border border-transparent hover:border-border transition-colors flex items-center gap-1.5 text-xs font-semibold"
-              title="Search Denim"
-              aria-label="Search Catalog"
-            >
-              <Search className="w-4 h-4 text-primary" />
-              <span className="hidden xl:inline text-text-secondary font-medium">Search</span>
-            </button>
-
-            {/* Quick Track Order Link */}
+          {/* Center: Clean 4-Item Desktop Navigation (Zero Duplicates, Organized Categories) */}
+          <nav className="hidden md:flex items-center gap-8">
             <Link
-              href="/track-order"
-              className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-semibold text-text hover:bg-surface-alt border border-transparent hover:border-border transition-colors"
-              title="Track Order"
+              href="/products"
+              className={`text-sm font-medium transition-colors hover:text-primary ${
+                pathname === '/products' ? 'text-primary font-semibold' : 'text-slate-600'
+              }`}
             >
-              <Truck className="w-3.5 h-3.5 text-primary" />
-              <span className="hidden xl:inline">Track Order</span>
+              Shop Denim
             </Link>
+
+            {/* Interactive Categories Dropdown */}
+            <div
+              className="relative"
+              ref={categoriesRef}
+              onMouseEnter={() => setCategoriesOpen(true)}
+              onMouseLeave={() => setCategoriesOpen(false)}
+            >
+              <button
+                type="button"
+                onClick={() => setCategoriesOpen(!categoriesOpen)}
+                className="flex items-center gap-1 text-sm font-medium text-slate-600 hover:text-primary transition-colors py-2 cursor-pointer"
+              >
+                <span>Categories</span>
+                <ChevronDown
+                  className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                    categoriesOpen ? 'rotate-180 text-primary' : ''
+                  }`}
+                />
+              </button>
+
+              {categoriesOpen && (
+                <div className="absolute left-0 top-full pt-1 w-72 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+                  <div className="rounded-2xl bg-white border border-border shadow-xl p-2 space-y-1">
+                    {CATEGORY_LINKS.map((cat) => (
+                      <Link
+                        key={cat.href}
+                        href={cat.href}
+                        onClick={() => setCategoriesOpen(false)}
+                        className="flex items-center justify-between p-2.5 rounded-xl hover:bg-surface-alt transition-colors group"
+                      >
+                        <div>
+                          <div className="text-xs font-semibold text-slate-900 group-hover:text-primary">
+                            {cat.name}
+                          </div>
+                          <div className="text-[11px] text-muted">{cat.desc}</div>
+                        </div>
+                        <ArrowRight className="w-3.5 h-3.5 text-muted opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
 
             <Link
               href="/b2b"
-              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-surface-alt border border-border text-text hover:bg-slate-100 transition-colors"
+              className={`text-sm font-medium transition-colors hover:text-primary ${
+                pathname === '/b2b' ? 'text-primary font-semibold' : 'text-slate-600'
+              }`}
             >
-              <Sparkles className="w-3.5 h-3.5 text-accent" />
-              <span>Bulk / B2B</span>
+              B2B Wholesale
             </Link>
 
-            {/* User Auth State & Dropdown */}
-            {authLoading ? (
-              <div className="w-8 h-8 rounded-full bg-surface-alt animate-pulse" />
-            ) : user ? (
-              <div className="relative" ref={dropdownRef}>
-                <button
-                  onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                  className={`p-1.5 sm:px-3 sm:py-1.5 rounded-full border transition-all flex items-center gap-1.5 text-xs font-semibold ${
-                    isAdmin
-                      ? 'bg-primary/10 border-primary/20 text-primary hover:bg-primary/15'
-                      : 'bg-surface-alt border-border text-text hover:bg-slate-100'
-                  }`}
-                  aria-label="User Account Menu"
-                >
-                  {isAdmin ? (
-                    <ShieldCheck className="w-4 h-4 text-primary shrink-0" />
-                  ) : (
-                    <User className="w-4 h-4 text-primary shrink-0" />
-                  )}
-                  <span className="hidden sm:inline max-w-[100px] truncate">
-                    {isAdmin ? 'Admin' : displayName}
-                  </span>
-                  <ChevronDown className="w-3.5 h-3.5 text-muted shrink-0" />
-                </button>
+            <Link
+              href="/about"
+              className={`text-sm font-medium transition-colors hover:text-primary ${
+                pathname === '/about' ? 'text-primary font-semibold' : 'text-slate-600'
+              }`}
+            >
+              Our Factory
+            </Link>
+          </nav>
 
-                {/* Dropdown Menu */}
-                {userDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-56 rounded-xl bg-white border border-border shadow-card-hover py-2 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
-                    <div className="px-4 py-2 border-b border-border">
-                      <p className="text-xs font-bold text-text truncate">{displayName}</p>
-                      <p className="text-[11px] text-muted truncate">{user.email || user.phone}</p>
-                      {isAdmin && (
-                        <span className="inline-block mt-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide uppercase bg-primary/10 text-primary border border-primary/20">
-                          Administrator
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="py-1">
-                      {isAdmin && (
-                        <Link
-                          href="/admin"
-                          onClick={() => setUserDropdownOpen(false)}
-                          className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-primary hover:bg-slate-50 transition-colors"
-                        >
-                          <ShieldCheck className="w-4 h-4 text-primary" />
-                          <span>Admin Dashboard</span>
-                        </Link>
-                      )}
-
-                      <Link
-                        href="/account"
-                        onClick={() => setUserDropdownOpen(false)}
-                        className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-text hover:bg-slate-50 transition-colors"
-                      >
-                        <User className="w-4 h-4 text-primary" />
-                        <span>My Account & Orders</span>
-                      </Link>
-
-                      <Link
-                        href="/products"
-                        onClick={() => setUserDropdownOpen(false)}
-                        className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-text hover:bg-slate-50 transition-colors"
-                      >
-                        <ShoppingBag className="w-4 h-4 text-muted" />
-                        <span>Browse Catalog</span>
-                      </Link>
-
-                      <button
-                        onClick={handleSignOut}
-                        className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-danger hover:bg-danger/10 transition-colors text-left"
-                      >
-                        <LogOut className="w-4 h-4" />
-                        <span>Sign Out</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <Link
-                href="/auth/login"
-                className="p-2 sm:px-3 sm:py-1.5 rounded-full text-text hover:bg-surface-alt border border-transparent hover:border-border transition-colors flex items-center gap-1.5 text-xs font-semibold"
-                title="Customer Login / Admin"
-              >
-                <User className="w-4 h-4 text-primary" />
-                <span className="hidden lg:inline text-text-secondary font-medium">Login</span>
-              </Link>
-            )}
+          {/* Right: Minimal Action Icons (Search, Wishlist, Bag, User Profile) */}
+          <div className="flex items-center gap-1.5 sm:gap-2.5">
+            {/* Search Button */}
+            <button
+              type="button"
+              onClick={() => setSearchModalOpen(true)}
+              className="p-2 rounded-full text-slate-700 hover:bg-surface-alt hover:text-primary transition-colors cursor-pointer"
+              title="Search Catalog"
+              aria-label="Search Catalog"
+            >
+              <Search className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
+            </button>
 
             {/* Wishlist Button */}
             <button
+              type="button"
               onClick={() => setWishlistOpen(true)}
-              className="relative p-2.5 rounded-full text-text hover:bg-surface-alt border border-transparent hover:border-border transition-colors cursor-pointer"
-              aria-label="Saved Items"
-              title="Saved Items"
+              className="relative p-2 rounded-full text-slate-700 hover:bg-surface-alt transition-colors cursor-pointer"
+              aria-label="Saved Wishlist"
+              title="Saved Wishlist"
             >
-              <Heart className="w-4 h-4 text-rose-500" />
+              <Heart className="w-4 h-4 sm:w-[18px] sm:h-[18px] text-rose-500" />
               {wishlistCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
+                <span className="absolute top-0.5 right-0.5 bg-rose-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
                   {wishlistCount}
                 </span>
               )}
             </button>
 
-            {/* Shopping Cart Button */}
+            {/* Shopping Cart Bag Button */}
             <Link
               href="/cart"
-              className="relative p-2.5 rounded-full bg-slate-900 text-white hover:bg-slate-800 shadow-sm transition-all"
-              aria-label="Shopping Cart"
+              className="relative p-2 sm:px-3 sm:py-2 rounded-full bg-slate-900 text-white hover:bg-slate-800 shadow-xs transition-all flex items-center gap-1.5"
+              aria-label="Shopping Bag"
             >
               <ShoppingBag className="w-4 h-4" />
+              <span className="hidden sm:inline text-xs font-semibold">Bag</span>
               {itemCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-accent text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
+                <span className="bg-accent text-primary text-[10px] font-extrabold px-1.5 py-0.2 rounded-full min-w-[18px] text-center">
                   {itemCount}
                 </span>
               )}
             </Link>
+
+            {/* User Profile & Order Tracking Menu (Works for Logged-in & Guest users) */}
+            <div className="relative" ref={dropdownRef}>
+              {authLoading ? (
+                <div className="w-8 h-8 rounded-full bg-surface-alt animate-pulse" />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                  className={`p-2 sm:px-3 sm:py-1.5 rounded-full border transition-all flex items-center gap-1.5 text-xs font-semibold cursor-pointer ${
+                    isAdmin
+                      ? 'bg-primary/10 border-primary/20 text-primary hover:bg-primary/15'
+                      : 'bg-surface-alt border-border text-slate-700 hover:border-slate-300'
+                  }`}
+                  aria-label="User Profile Menu"
+                >
+                  {isAdmin ? (
+                    <ShieldCheck className="w-4 h-4 text-primary shrink-0" />
+                  ) : (
+                    <User className="w-4 h-4 text-slate-700 shrink-0" />
+                  )}
+                  <span className="hidden lg:inline max-w-[90px] truncate">
+                    {user ? (isAdmin ? 'Admin' : displayName) : 'Profile'}
+                  </span>
+                  <ChevronDown className="w-3.5 h-3.5 text-muted shrink-0 hidden sm:block" />
+                </button>
+              )}
+
+              {/* Profile Dropdown Menu (Contains Track Order & Account Tools) */}
+              {userDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-60 rounded-2xl bg-white border border-border shadow-xl py-2 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+                  {user ? (
+                    <div className="px-4 py-2.5 border-b border-border">
+                      <p className="text-xs font-bold text-slate-900 truncate">{displayName}</p>
+                      <p className="text-[11px] text-muted truncate">{user.email || user.phone}</p>
+                      {isAdmin && (
+                        <span className="inline-block mt-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase bg-primary/10 text-primary border border-primary/20">
+                          Administrator
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="px-4 py-2.5 border-b border-border space-y-2">
+                      <p className="text-[11px] text-muted">Manage orders, track parcels &amp; returns</p>
+                      <Link
+                        href="/auth/login"
+                        onClick={() => setUserDropdownOpen(false)}
+                        className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-hover transition-colors"
+                      >
+                        <LogIn className="w-3.5 h-3.5" />
+                        <span>Sign In / Register</span>
+                      </Link>
+                    </div>
+                  )}
+
+                  <div className="py-1.5">
+                    {isAdmin && (
+                      <Link
+                        href="/admin"
+                        onClick={() => setUserDropdownOpen(false)}
+                        className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-primary hover:bg-surface-alt transition-colors"
+                      >
+                        <ShieldCheck className="w-4 h-4 text-primary" />
+                        <span>Admin Dashboard</span>
+                      </Link>
+                    )}
+
+                    <Link
+                      href="/account"
+                      onClick={() => setUserDropdownOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-surface-alt hover:text-primary transition-colors"
+                    >
+                      <User className="w-4 h-4 text-muted" />
+                      <span>My Account &amp; Orders</span>
+                    </Link>
+
+                    <Link
+                      href="/track-order"
+                      onClick={() => setUserDropdownOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-surface-alt hover:text-primary transition-colors"
+                    >
+                      <Truck className="w-4 h-4 text-primary" />
+                      <span>Track Live Order</span>
+                    </Link>
+
+                    <Link
+                      href="/returns"
+                      onClick={() => setUserDropdownOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-surface-alt hover:text-primary transition-colors"
+                    >
+                      <RotateCcw className="w-4 h-4 text-muted" />
+                      <span>7-Day Exchange &amp; Returns</span>
+                    </Link>
+
+                    {user && (
+                      <div className="pt-1 mt-1 border-t border-border">
+                        <button
+                          type="button"
+                          onClick={handleSignOut}
+                          className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-danger hover:bg-danger/10 transition-colors text-left cursor-pointer"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          <span>Sign Out</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Mobile Drawer Menu */}
+      {/* Mobile Categorized Navigation Drawer */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-white border-b border-border px-4 pt-3 pb-6 space-y-4 animate-in slide-in-from-top-2 duration-200">
-          {/* Mobile Search Bar Trigger */}
-          <button
-            onClick={() => {
-              setMobileMenuOpen(false);
-              setSearchModalOpen(true);
-            }}
-            className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-surface-alt border border-border text-muted text-xs font-medium hover:border-primary transition-colors text-left"
-          >
-            <Search className="w-4 h-4 text-primary" />
-            <span>Search jeans, styles, fits...</span>
-          </button>
-
-          {/* User Status Bar in Mobile */}
-          <div className="p-3 rounded-xl bg-surface-alt border border-border flex items-center justify-between">
-            {user ? (
-              <div className="flex items-center justify-between w-full">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold text-xs">
-                    {isAdmin ? <ShieldCheck className="w-4 h-4" /> : <User className="w-4 h-4" />}
-                  </div>
+        <div className="md:hidden bg-white border-b border-border px-4 pt-3 pb-6 space-y-5 animate-in slide-in-from-top-2 duration-200 max-h-[82vh] overflow-y-auto">
+          {/* Categories Group */}
+          <div className="space-y-2">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-muted px-1">
+              Shop Denim Categories
+            </span>
+            <div className="grid grid-cols-1 gap-1.5">
+              {CATEGORY_LINKS.map((cat) => (
+                <Link
+                  key={cat.href}
+                  href={cat.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center justify-between p-3 rounded-xl bg-surface-alt border border-border text-slate-900 hover:border-primary transition-colors"
+                >
                   <div>
-                    <div className="text-xs font-bold text-text truncate max-w-[160px]">{displayName}</div>
-                    <div className="text-[11px] text-muted">{isAdmin ? 'Administrator' : 'Customer'}</div>
+                    <div className="text-xs font-bold">{cat.name}</div>
+                    <div className="text-[11px] text-muted">{cat.desc}</div>
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {isAdmin && (
-                    <Link
-                      href="/admin"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="px-2.5 py-1 rounded-lg bg-primary text-white text-xs font-semibold"
-                    >
-                      Dashboard
-                    </Link>
-                  )}
-                  <button
-                    onClick={handleSignOut}
-                    className="p-1.5 rounded-lg text-danger hover:bg-danger/10 transition-colors"
-                    title="Sign Out"
-                  >
-                    <LogOut className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <Link
-                href="/auth/login"
-                onClick={() => setMobileMenuOpen(false)}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-primary text-white text-xs font-semibold"
-              >
-                <User className="w-4 h-4" />
-                <span>Sign In / Register</span>
-              </Link>
-            )}
+                  <ArrowRight className="w-3.5 h-3.5 text-muted" />
+                </Link>
+              ))}
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 text-xs font-medium">
-            {navLinks.map((link) => (
+          {/* Wholesale & Mill Group */}
+          <div className="space-y-2">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-muted px-1">
+              Wholesale &amp; Factory
+            </span>
+            <div className="grid grid-cols-2 gap-2 text-xs font-semibold">
               <Link
-                key={link.name}
-                href={link.href}
+                href="/b2b"
                 onClick={() => setMobileMenuOpen(false)}
-                className="p-3 rounded-lg bg-surface-alt border border-border text-text hover:border-primary transition-colors text-center"
+                className="p-3 rounded-xl bg-surface-alt border border-border text-slate-800 hover:border-primary text-center"
               >
-                {link.name}
+                B2B Wholesale
               </Link>
-            ))}
+              <Link
+                href="/about"
+                onClick={() => setMobileMenuOpen(false)}
+                className="p-3 rounded-xl bg-surface-alt border border-border text-slate-800 hover:border-primary text-center"
+              >
+                Our Factory
+              </Link>
+            </div>
           </div>
 
-          <div className="pt-2 border-t border-border flex items-center justify-between text-xs text-muted">
+          {/* Customer Profile & Order Utilities */}
+          <div className="space-y-2">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-muted px-1">
+              Account &amp; Orders
+            </span>
+            <div className="grid grid-cols-2 gap-2 text-xs font-semibold">
+              <Link
+                href="/track-order"
+                onClick={() => setMobileMenuOpen(false)}
+                className="p-3 rounded-xl bg-primary/5 border border-primary/20 text-primary flex items-center justify-center gap-1.5"
+              >
+                <Truck className="w-3.5 h-3.5" />
+                <span>Track Order</span>
+              </Link>
+              <Link
+                href="/returns"
+                onClick={() => setMobileMenuOpen(false)}
+                className="p-3 rounded-xl bg-surface-alt border border-border text-slate-800 flex items-center justify-center gap-1.5"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-muted" />
+                <span>Returns</span>
+              </Link>
+            </div>
+          </div>
+
+          {/* Footer Contact Row */}
+          <div className="pt-3 border-t border-border flex items-center justify-between text-xs text-muted">
             <a
               href="https://wa.me/918797186001"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-accent font-semibold"
+              className="inline-flex items-center gap-1.5 text-primary font-semibold"
             >
               <Phone className="w-3.5 h-3.5" />
               <span>WhatsApp: +91 8797186001</span>
             </a>
-            <span className="text-[11px] font-medium text-muted">
-              Sheikhpura, Bihar
-            </span>
+            <span className="text-[11px] font-medium">Sheikhpura, Bihar</span>
           </div>
         </div>
       )}

@@ -146,7 +146,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
       {/* Header & Sort Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-border">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-text tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
             TOLAND Denim Collection
           </h1>
           <p className="text-xs text-muted mt-1">
@@ -203,8 +203,8 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         </div>
       )}
 
-      {/* Quick Category & Fit Pills (Mobile & Desktop) */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none text-xs">
+      {/* Quick Category & Fit Pills (Mobile & Tablet only, sidebar handles Desktop) */}
+      <div className="flex lg:hidden items-center gap-2 overflow-x-auto pb-2 scrollbar-none text-xs">
         <Link
           href="/products"
           className={`px-3.5 py-1.5 rounded-full font-bold whitespace-nowrap transition-colors border ${

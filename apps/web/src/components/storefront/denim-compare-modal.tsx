@@ -2,22 +2,20 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useCompare } from '@/context/compare-context';
 import {
   Scale,
   X,
   Trash2,
-  ExternalLink,
-  CheckCircle2,
-  Layers,
-  Sparkles,
   ArrowRight,
 } from 'lucide-react';
 
 export function DenimCompareModal() {
+  const pathname = usePathname();
   const { items, removeFromCompare, clearCompare, isModalOpen, setIsModalOpen } = useCompare();
 
-  if (items.length === 0) {
+  if (pathname.startsWith('/admin') || items.length === 0) {
     return null;
   }
 
