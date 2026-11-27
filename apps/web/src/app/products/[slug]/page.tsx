@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 import { ProductDetailView } from '@/components/storefront/product-detail-view';
 import { ChevronRight } from 'lucide-react';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 interface ProductDetailPageProps {
   params: {

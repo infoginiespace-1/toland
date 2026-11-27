@@ -32,13 +32,7 @@ export default async function AdminProductsPage({ searchParams }: ProductsAdminP
   const categoryId = searchParams.categoryId || '';
   const status = searchParams.status || 'all';
 
-  // Fetch categories for filtering dropdown
-  const { data: categories } = await supabase
-    .from('categories')
-    .select('id, name, slug')
-    .order('sort', { ascending: true });
-
-  // Fetch products query
+  // Build products query
   let query = supabase
     .from('products')
     .select(`
@@ -63,8 +57,17 @@ export default async function AdminProductsPage({ searchParams }: ProductsAdminP
     query = query.eq('is_active', false);
   }
 
-  const { data: productsData } = await query;
-  const products = (productsData || []) as any[];
+  // Fetch categories and products simultaneously in parallel
+  const [categoriesRes, productsDataRes] = await Promise.all([
+    supabase
+      .from('categories')
+      .select('id, name, slug')
+      .order('sort', { ascending: true }),
+    query,
+  ]);
+
+  const categories = categoriesRes.data || [];
+  const products = (productsDataRes.data || []) as any[];
 
   // Calculate summary counts
   const totalProducts = products.length;

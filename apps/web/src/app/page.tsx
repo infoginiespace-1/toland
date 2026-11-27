@@ -14,30 +14,33 @@ import {
   Percent,
 } from 'lucide-react';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 export default async function HomePage() {
   const supabase = createClient();
 
-  // Fetch active categories
-  const { data: categories } = await supabase
-    .from('categories')
-    .select('*')
-    .eq('is_active', true)
-    .order('sort', { ascending: true });
+  // Fetch active categories and featured products in parallel
+  const [categoriesRes, productsRes] = await Promise.all([
+    supabase
+      .from('categories')
+      .select('*')
+      .eq('is_active', true)
+      .order('sort', { ascending: true }),
+    supabase
+      .from('products')
+      .select(`
+        *,
+        category:categories(name, slug),
+        variants:product_variants(*),
+        images:product_images(path, sort)
+      `)
+      .eq('is_active', true)
+      .eq('is_featured', true)
+      .limit(8),
+  ]);
 
-  // Fetch featured products with variants and images
-  const { data: products } = await supabase
-    .from('products')
-    .select(`
-      *,
-      category:categories(name, slug),
-      variants:product_variants(*),
-      images:product_images(path, sort)
-    `)
-    .eq('is_active', true)
-    .eq('is_featured', true)
-    .limit(8);
+  const categories = categoriesRes.data;
+  const products = productsRes.data;
 
   return (
     <div className="space-y-16 pb-20">

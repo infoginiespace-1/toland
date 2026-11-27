@@ -28,77 +28,78 @@ export default async function AdminWhatsAppPage() {
     supabase = createClient();
   }
 
-  // Fetch session data
-  const { data: sessionData } = await supabase
-    .from('wa_sessions')
-    .select('*')
-    .order('updated_at', { ascending: false })
-    .limit(1)
-    .single();
+  // Parallel fetch: DB queries and bridge status in one simultaneous roundtrip
+  const bridgeUrl = process.env.WHATSAPP_BRIDGE_URL || 'https://toland-whatsapp-bridge.onrender.com';
+  const secret = process.env.WHATSAPP_BRIDGE_SECRET || 'toland_bridge_secret_dev';
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  const fetchBridgeStatus = async () => {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 900);
+      const res = await fetch(`${bridgeUrl}/status`, {
+        headers: { 'x-bridge-secret': secret },
+        cache: 'no-store',
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      if (res.ok) return await res.json();
+    } catch {
+      return null;
+    }
+    return null;
+  };
+
+  const [
+    { data: sessionData },
+    bridgeData,
+    { data: settingsData },
+    { data: recentMessagesData },
+    { data: templatesData },
+    { count: queuedCount },
+    { count: sentTodayCount },
+  ] = await Promise.all([
+    supabase
+      .from('wa_sessions')
+      .select('*')
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .single(),
+    fetchBridgeStatus(),
+    supabase.from('wa_settings').select('*').limit(1).single(),
+    supabase
+      .from('wa_messages')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(15),
+    supabase
+      .from('wa_templates')
+      .select('*')
+      .order('created_at', { ascending: true }),
+    supabase
+      .from('wa_messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'queued'),
+    supabase
+      .from('wa_messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'sent')
+      .gte('created_at', todayStr),
+  ]);
 
   let session = sessionData as any;
-
-  // Direct check with live WhatsApp bridge to ensure 100% accurate status
-  try {
-    const bridgeUrl = process.env.WHATSAPP_BRIDGE_URL || 'https://toland-whatsapp-bridge.onrender.com';
-    const secret = process.env.WHATSAPP_BRIDGE_SECRET || 'toland_bridge_secret_dev';
-    const bridgeRes = await fetch(`${bridgeUrl}/status`, {
-      headers: { 'x-bridge-secret': secret },
-      cache: 'no-store',
-      next: { revalidate: 0 },
-    });
-    if (bridgeRes.ok) {
-      const bridgeData = await bridgeRes.json();
-      if (bridgeData.status) {
-        session = {
-          ...(session || {}),
-          status: bridgeData.status,
-          connected_phone: bridgeData.connected_phone || session?.connected_phone,
-          last_seen: bridgeData.last_seen || session?.last_seen,
-        };
-      }
-    }
-  } catch {
-    // Bridge offline or uncontactable, keep DB session
+  if (bridgeData?.status) {
+    session = {
+      ...(session || {}),
+      status: bridgeData.status,
+      connected_phone: bridgeData.connected_phone || session?.connected_phone,
+      last_seen: bridgeData.last_seen || session?.last_seen,
+    };
   }
 
-  // Fetch settings data
-  const { data: settingsData } = await supabase
-    .from('wa_settings')
-    .select('*')
-    .limit(1)
-    .single();
-
   const settings = settingsData as any;
-
-  // Fetch recent messages
-  const { data: recentMessagesData } = await supabase
-    .from('wa_messages')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(15);
-
   const recentMessages = (recentMessagesData || []) as any[];
-
-  // Fetch templates
-  const { data: templatesData } = await supabase
-    .from('wa_templates')
-    .select('*')
-    .order('created_at', { ascending: true });
-
   const templates = (templatesData || []) as any[];
-
-  // Calculate stats
-  const { count: queuedCount } = await supabase
-    .from('wa_messages')
-    .select('*', { count: 'exact', head: true })
-    .eq('status', 'queued');
-
-  const { count: sentTodayCount } = await supabase
-    .from('wa_messages')
-    .select('*', { count: 'exact', head: true })
-    .eq('status', 'sent')
-    .gte('created_at', new Date().toISOString().split('T')[0]);
 
   const isConnected = session?.status === 'connected';
   const isQrReady = session?.status === 'qr_ready';

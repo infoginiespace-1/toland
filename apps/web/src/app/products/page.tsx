@@ -32,14 +32,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const selectedWash = searchParams.wash || '';
   const selectedSort = searchParams.sort || 'featured';
 
-  // 1. Fetch Categories for filter sidebar
-  const { data: categories } = await supabase
-    .from('categories')
-    .select('*')
-    .eq('is_active', true)
-    .order('sort', { ascending: true });
-
-  // 2. Fetch products with filter criteria
+  // 1. Prepare products query
   let query = supabase
     .from('products')
     .select(`
@@ -49,17 +42,6 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
       images:product_images(path, sort)
     `)
     .eq('is_active', true);
-
-  if (selectedCategory) {
-    const { data: catRow } = await supabase
-      .from('categories')
-      .select('id')
-      .eq('slug', selectedCategory)
-      .single();
-    if ((catRow as any)?.id) {
-      query = query.eq('category_id', (catRow as any).id);
-    }
-  }
 
   // Sort ordering
   if (selectedSort === 'price_asc') {
@@ -72,7 +54,23 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
     query = query.order('is_featured', { ascending: false }).order('created_at', { ascending: false });
   }
 
-  const { data: allProducts } = await query;
+  // 2. Fetch categories and products simultaneously in parallel
+  const [categoriesRes, productsRes] = await Promise.all([
+    supabase
+      .from('categories')
+      .select('*')
+      .eq('is_active', true)
+      .order('sort', { ascending: true }),
+    query,
+  ]);
+
+  const categories = categoriesRes.data || [];
+  const rawProducts = (productsRes.data || []) as any[];
+
+  // Filter category in-memory with zero extra DB roundtrip
+  const allProducts = selectedCategory
+    ? rawProducts.filter((p: any) => p.category?.slug === selectedCategory)
+    : rawProducts;
 
   // Filter in-memory for variant attributes (size, fit, wash)
   const filteredProducts = (allProducts || []).filter((product: any) => {
