@@ -23,6 +23,7 @@ import {
   Sparkles,
   Loader2,
   Quote,
+  MapPin,
 } from 'lucide-react';
 
 interface ProductDetailViewProps {
@@ -55,6 +56,19 @@ export function ProductDetailView({
   const [submittingReview, setSubmittingReview] = useState(false);
   const [reviewSuccess, setReviewSuccess] = useState(false);
 
+  // Pincode & Delivery Estimation State
+  const [pincode, setPincode] = useState('');
+  const [pincodeStatus, setPincodeStatus] = useState<{
+    checked: boolean;
+    valid: boolean;
+    city?: string;
+    estimate?: string;
+    days?: string;
+    cod: boolean;
+    freeShipping: boolean;
+    message?: string;
+  } | null>(null);
+
   // Review Form Fields
   const [reviewRating, setReviewRating] = useState(5);
   const [hoverRating, setHoverRating] = useState(0);
@@ -70,6 +84,67 @@ export function ProductDetailView({
     : 0;
 
   const currentPrice = selectedVariant?.price || product.base_price;
+
+  const verifyPincode = (pin: string) => {
+    const clean = pin.trim();
+    if (!/^[1-9][0-9]{5}$/.test(clean)) {
+      setPincodeStatus({
+        checked: true,
+        valid: false,
+        cod: false,
+        freeShipping: false,
+        message: 'Please enter a valid 6-digit Indian PIN code.',
+      });
+      return;
+    }
+
+    try {
+      localStorage.setItem('toland_pincode', clean);
+    } catch (e) {}
+
+    const prefix = clean.substring(0, 2);
+    let days = '3-5 business days';
+    let region = 'Rest of India';
+    let daysToAdd = 4;
+
+    if (prefix >= '80' && prefix <= '85') {
+      days = '24-48 hours (Factory Express)';
+      region = 'Bihar & Neighboring Hubs';
+      daysToAdd = 2;
+    } else if (['11', '12', '20', '40', '56', '70', '50', '60'].includes(prefix)) {
+      days = '2-3 business days';
+      region = 'Metro Express Transit';
+      daysToAdd = 3;
+    }
+
+    const estDate = new Date();
+    estDate.setDate(estDate.getDate() + daysToAdd);
+    const formattedDate = estDate.toLocaleDateString('en-IN', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+    });
+
+    setPincodeStatus({
+      checked: true,
+      valid: true,
+      city: region,
+      estimate: formattedDate,
+      days,
+      cod: true,
+      freeShipping: currentPrice >= 999,
+    });
+  };
+
+  React.useEffect(() => {
+    try {
+      const savedPin = localStorage.getItem('toland_pincode');
+      if (savedPin && /^[1-9][0-9]{5}$/.test(savedPin)) {
+        setPincode(savedPin);
+        verifyPincode(savedPin);
+      }
+    } catch (e) {}
+  }, []);
   const isOutOfStock = (selectedVariant?.stock_qty || 0) <= 0;
   const currentImgObj = images[activeImageIndex] || images[0];
   const currentImage = currentImgObj?.path || '';
@@ -461,6 +536,87 @@ export function ProductDetailView({
               <Phone className="w-4 h-4" />
               <span>Inquire via WhatsApp Desk</span>
             </a>
+          </div>
+
+          {/* Pincode & Delivery Date Checker */}
+          <div className="p-4 rounded-2xl bg-surface-alt border border-border space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-text flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-primary" />
+                <span>Delivery & COD Availability</span>
+              </span>
+              {pincodeStatus?.valid && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPincodeStatus(null);
+                    setPincode('');
+                    try {
+                      localStorage.removeItem('toland_pincode');
+                    } catch (e) {}
+                  }}
+                  className="text-2xs font-semibold text-primary hover:underline cursor-pointer"
+                >
+                  Change Pincode
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  maxLength={6}
+                  value={pincode}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '');
+                    setPincode(val);
+                    if (val.length === 6) verifyPincode(val);
+                  }}
+                  placeholder="Enter 6-digit Pincode (e.g. 811101, 110001)"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-white text-xs font-mono font-bold text-text placeholder:text-muted focus:outline-none focus:border-primary"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => verifyPincode(pincode)}
+                className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-colors cursor-pointer shrink-0"
+              >
+                Check
+              </button>
+            </div>
+
+            {/* Verification Result */}
+            {pincodeStatus?.checked && (
+              <div className="pt-2 border-t border-slate-200/60 space-y-2 animate-in fade-in duration-150">
+                {pincodeStatus.valid ? (
+                  <>
+                    <div className="flex items-center gap-2 text-xs font-bold text-emerald-700">
+                      <Truck className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>
+                        Delivery by <strong className="underline">{pincodeStatus.estimate}</strong> ({pincodeStatus.days})
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-2xs font-medium text-slate-700 pt-1">
+                      <div className="flex items-center gap-1.5">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        <span>Cash on Delivery (COD) Available</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        <span>{pincodeStatus.freeShipping ? 'Free Factory Express Shipping' : 'Standard Shipping ₹99'}</span>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-xs text-danger font-semibold flex items-center gap-1.5">
+                    <span>⚠️</span>
+                    <span>{pincodeStatus.message || 'Invalid postal code'}</span>
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Manufacturing Specifications */}

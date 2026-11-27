@@ -73,10 +73,14 @@ export async function POST(request: Request) {
     const orderNo = `TLD-${year}-${randomSuffix}`;
 
     // Clean phone number (e.g. 919876543210)
-    const cleanPhone = phone.replace(/[^0-9]/g, '');
-    const formattedPhone = cleanPhone.startsWith('91') && cleanPhone.length === 12
-      ? cleanPhone
-      : `91${cleanPhone.slice(-10)}`;
+    const rawDigits = phone.replace(/[^0-9]/g, '');
+    const formattedPhone = rawDigits.length === 10
+      ? `91${rawDigits}`
+      : rawDigits.length === 11 && rawDigits.startsWith('0')
+      ? `91${rawDigits.slice(1)}`
+      : rawDigits.length >= 12
+      ? rawDigits.slice(-12)
+      : `91${rawDigits.slice(-10)}`;
 
     const addressSnapshot = {
       name: customerName,
@@ -139,7 +143,7 @@ export async function POST(request: Request) {
       `Items: ${items.map((i) => `${i.name} (Size: ${i.size}) x${i.qty}`).join(', ')}\n` +
       `Total: ₹${total} (${paymentMethod === 'cod' ? 'Cash on Delivery' : 'Prepaid'})\n\n` +
       `Delivery Address: ${addressLine1}, ${city}, ${state} - ${pincode}\n\n` +
-      `Your jeans will be packed and dispatched directly from our Sheikhpura factory. Track updates anytime here:\nhttps://toland-web.vercel.app/orders/${createdOrderNo}`;
+      `Your jeans will be packed and dispatched directly from our Sheikhpura factory. Track updates anytime here:\nhttps://toland-web.vercel.app/track-order?q=${createdOrderNo}`;
 
     await supabase.from('wa_messages').insert({
       direction: 'outbound',

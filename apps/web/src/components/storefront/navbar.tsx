@@ -16,7 +16,10 @@ import {
   LogOut,
   Package,
   ChevronDown,
+  Search,
+  Truck,
 } from 'lucide-react';
+import { SearchModal } from '@/components/storefront/search-modal';
 
 export function StorefrontNavbar() {
   const pathname = usePathname();
@@ -24,6 +27,7 @@ export function StorefrontNavbar() {
   const { itemCount } = useCart();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [searchModalOpen, setSearchModalOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Auth state
@@ -124,6 +128,7 @@ export function StorefrontNavbar() {
 
   const navLinks = [
     { name: 'All Denim', href: '/products' },
+    { name: 'Track Order', href: '/track-order' },
     { name: 'Slim Fit', href: '/products?category=slim-fit-denim' },
     { name: 'Straight Fit', href: '/products?category=regular-straight' },
     { name: 'Jackets & Tops', href: '/products?category=casual-jackets-shirts' },
@@ -247,7 +252,28 @@ export function StorefrontNavbar() {
           </nav>
 
           {/* Right Action Icons */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Search Trigger Button */}
+            <button
+              onClick={() => setSearchModalOpen(true)}
+              className="p-2 sm:px-2.5 sm:py-1.5 rounded-full text-text hover:bg-surface-alt border border-transparent hover:border-border transition-colors flex items-center gap-1.5 text-xs font-semibold"
+              title="Search Denim"
+              aria-label="Search Catalog"
+            >
+              <Search className="w-4 h-4 text-primary" />
+              <span className="hidden xl:inline text-text-secondary font-medium">Search</span>
+            </button>
+
+            {/* Quick Track Order Link */}
+            <Link
+              href="/track-order"
+              className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-semibold text-text hover:bg-surface-alt border border-transparent hover:border-border transition-colors"
+              title="Track Order"
+            >
+              <Truck className="w-3.5 h-3.5 text-primary" />
+              <span className="hidden xl:inline">Track Order</span>
+            </Link>
+
             <Link
               href="/b2b"
               className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-surface-alt border border-border text-text hover:bg-slate-100 transition-colors"
@@ -357,6 +383,18 @@ export function StorefrontNavbar() {
       {/* Mobile Drawer Menu */}
       {mobileMenuOpen && (
         <div className="md:hidden bg-white border-b border-border px-4 pt-3 pb-6 space-y-4 animate-in slide-in-from-top-2 duration-200">
+          {/* Mobile Search Bar Trigger */}
+          <button
+            onClick={() => {
+              setMobileMenuOpen(false);
+              setSearchModalOpen(true);
+            }}
+            className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-surface-alt border border-border text-muted text-xs font-medium hover:border-primary transition-colors text-left"
+          >
+            <Search className="w-4 h-4 text-primary" />
+            <span>Search jeans, styles, fits...</span>
+          </button>
+
           {/* User Status Bar in Mobile */}
           <div className="p-3 rounded-xl bg-surface-alt border border-border flex items-center justify-between">
             {user ? (
@@ -430,6 +468,9 @@ export function StorefrontNavbar() {
           </div>
         </div>
       )}
+
+      {/* Global Live Search Modal */}
+      <SearchModal isOpen={searchModalOpen} onClose={() => setSearchModalOpen(false)} />
     </header>
   );
 }

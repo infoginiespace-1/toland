@@ -160,6 +160,12 @@ export function StorefrontFooter() {
             <h3 className="text-xs font-bold uppercase tracking-wider text-text mb-3">Customer Support</h3>
             <ul className="space-y-2 text-xs text-muted">
               <li>
+                <Link href="/track-order" className="text-primary font-bold hover:underline flex items-center gap-1.5">
+                  <Truck className="w-3.5 h-3.5 text-primary" />
+                  <span>Track Your Order</span>
+                </Link>
+              </li>
+              <li>
                 <Link href="/shipping" className="hover:text-primary transition-colors">
                   Shipping Policy
                 </Link>

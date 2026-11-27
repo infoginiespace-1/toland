@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,10 +14,11 @@ export async function PUT(
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user || (user.app_metadata?.role !== 'admin' && user.app_metadata?.role !== 'staff')) {
+    if (!user || (user.app_metadata?.role !== 'admin' && user.app_metadata?.role !== 'staff' && user.email !== 'dawoodhussain504@gmail.com' && user.email !== 'info.giniespace@gmail.com')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const adminDb = createAdminClient();
     const { id } = params;
     const body = await request.json();
     const { status, note, payment_status, notify_whatsapp = true, courier, awb, tracking_url } = body;
@@ -26,7 +28,7 @@ export async function PUT(
     }
 
     // 1. Fetch current order
-    const { data: orderData, error: fetchError } = (await supabase
+    const { data: orderData, error: fetchError } = (await adminDb
       .from('orders')
       .select('*')
       .eq('id', id)
@@ -47,7 +49,7 @@ export async function PUT(
     }
 
     // 2. Update order record
-    const { error: updateError } = await (supabase
+    const { error: updateError } = await (adminDb
       .from('orders') as any)
       .update(updatePayload)
       .eq('id', id);
@@ -55,7 +57,7 @@ export async function PUT(
     if (updateError) throw updateError;
 
     // 3. Record status history
-    await supabase.from('order_status_history').insert({
+    await adminDb.from('order_status_history').insert({
       order_id: id,
       status,
       note: note || `Order updated to ${status.toUpperCase()} by factory staff`,
@@ -63,7 +65,7 @@ export async function PUT(
 
     // 4. Update or insert shipment if provided
     if (courier || awb) {
-      await supabase.from('shipments').insert({
+      await adminDb.from('shipments').insert({
         order_id: id,
         courier: courier || 'Delhivery Express',
         awb: awb || 'PENDING',
@@ -81,18 +83,18 @@ export async function PUT(
       const orderNo = order.order_no;
 
       if (status === 'packed') {
-        waBody = `Namaste ${address.name || 'Valued Customer'}!\n\nYour TOLAND order *${orderNo}* has completed stitching inspection and is now *Factory Packed* in tamper-proof packing at our Sheikhpura, Bihar facility.\n\nIt is queued for express courier pickup. Track progress:\nhttps://toland-web.vercel.app/orders/${orderNo}`;
+        waBody = `Namaste ${address.name || 'Valued Customer'}!\n\nYour TOLAND order *${orderNo}* has completed stitching inspection and is now *Factory Packed* in tamper-proof packing at our Sheikhpura, Bihar facility.\n\nIt is queued for express courier pickup. Track progress:\nhttps://toland-web.vercel.app/track-order?q=${orderNo}`;
       } else if (status === 'shipped') {
-        waBody = `Namaste ${address.name || 'Valued Customer'}!\n\nGreat news! Your TOLAND order *${orderNo}* has been *Dispatched* from our factory floor.\n\nCourier: ${courier || 'Express Logistics'}\nAWB: ${awb || 'Standard Surface'}\n\nTrack your package live:\nhttps://toland-web.vercel.app/orders/${orderNo}`;
+        waBody = `Namaste ${address.name || 'Valued Customer'}!\n\nGreat news! Your TOLAND order *${orderNo}* has been *Dispatched* from our factory floor.\n\nCourier: ${courier || 'Express Logistics'}\nAWB: ${awb || 'Standard Surface'}\n\nTrack your package live:\nhttps://toland-web.vercel.app/track-order?q=${orderNo}`;
       } else if (status === 'delivered') {
         waBody = `Namaste ${address.name || 'Valued Customer'}!\n\nYour TOLAND order *${orderNo}* has been marked *Delivered*.\n\nWe hope you love the fit and feel of your genuine denim! If you need any size adjustments, our 7-day doorstep exchange is available anytime.\n\nThank you for supporting direct Indian manufacturing!`;
       } else if (status === 'cancelled') {
         waBody = `Namaste ${address.name || 'Valued Customer'}!\n\nYour TOLAND order *${orderNo}* has been *Cancelled*. Any prepaid amount will be refunded directly within 3–5 business days.`;
       } else {
-        waBody = `Namaste ${address.name || 'Valued Customer'}!\n\nUpdate on your TOLAND order *${orderNo}*: Status has been updated to *${status.toUpperCase()}*.\n\nTrack details: https://toland-web.vercel.app/orders/${orderNo}`;
+        waBody = `Namaste ${address.name || 'Valued Customer'}!\n\nUpdate on your TOLAND order *${orderNo}*: Status has been updated to *${status.toUpperCase()}*.\n\nTrack details: https://toland-web.vercel.app/track-order?q=${orderNo}`;
       }
 
-      await supabase.from('wa_messages').insert({
+      await adminDb.from('wa_messages').insert({
         direction: 'outbound',
         phone: customerPhone.startsWith('+') ? customerPhone : `+91${customerPhone.replace(/\D/g, '').slice(-10)}`,
         body: waBody,

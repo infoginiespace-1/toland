@@ -9,6 +9,7 @@ import {
   Check,
   ChevronRight,
   Sparkles,
+  X,
 } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -20,6 +21,8 @@ interface ProductsPageProps {
     fit?: string;
     wash?: string;
     sort?: string;
+    search?: string;
+    q?: string;
   };
 }
 
@@ -31,6 +34,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const selectedFit = searchParams.fit || '';
   const selectedWash = searchParams.wash || '';
   const selectedSort = searchParams.sort || 'featured';
+  const searchQuery = (searchParams.search || searchParams.q || '').trim().toLowerCase();
 
   // 1. Prepare products query
   let query = supabase
@@ -67,10 +71,19 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const categories = categoriesRes.data || [];
   const rawProducts = (productsRes.data || []) as any[];
 
-  // Filter category in-memory with zero extra DB roundtrip
-  const allProducts = selectedCategory
-    ? rawProducts.filter((p: any) => p.category?.slug === selectedCategory)
-    : rawProducts;
+  // Filter category & search term in-memory with zero extra DB roundtrip
+  const allProducts = rawProducts.filter((product: any) => {
+    if (selectedCategory && product.category?.slug !== selectedCategory) {
+      return false;
+    }
+    if (searchQuery) {
+      const nameMatch = product.name?.toLowerCase().includes(searchQuery);
+      const descMatch = product.description?.toLowerCase().includes(searchQuery);
+      const catMatch = product.category?.name?.toLowerCase().includes(searchQuery);
+      if (!nameMatch && !descMatch && !catMatch) return false;
+    }
+    return true;
+  });
 
   // Filter in-memory for variant attributes (size, fit, wash)
   const filteredProducts = (allProducts || []).filter((product: any) => {
@@ -98,6 +111,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
     if (selectedSize) params.set('size', selectedSize);
     if (selectedFit) params.set('fit', selectedFit);
     if (selectedWash) params.set('wash', selectedWash);
+    if (searchQuery) params.set('search', searchQuery);
     if (selectedSort && selectedSort !== 'featured') params.set('sort', selectedSort);
 
     if (!value || params.get(key) === value) {
@@ -168,6 +182,71 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
             })}
           </div>
         </div>
+      </div>
+
+      {/* Search Query Active Tag */}
+      {searchQuery && (
+        <div className="flex items-center justify-between p-3.5 rounded-2xl bg-primary/10 border border-primary/20 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-text">Showing search results for:</span>
+            <span className="font-bold text-primary bg-white px-2.5 py-0.5 rounded-lg border border-primary/20">
+              &quot;{searchQuery}&quot;
+            </span>
+          </div>
+          <Link
+            href="/products"
+            className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
+          >
+            <span>Clear Search</span>
+            <X className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+      )}
+
+      {/* Quick Category & Fit Pills (Mobile & Desktop) */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none text-xs">
+        <Link
+          href="/products"
+          className={`px-3.5 py-1.5 rounded-full font-bold whitespace-nowrap transition-colors border ${
+            !selectedCategory && !selectedFit && !selectedWash && !searchQuery
+              ? 'bg-primary text-white border-primary shadow-xs'
+              : 'bg-surface-alt border-border text-muted hover:text-text'
+          }`}
+        >
+          All Items ({rawProducts.length})
+        </Link>
+        {(categories as any[])?.map((cat: any) => {
+          const isSelected = selectedCategory === cat.slug;
+          return (
+            <Link
+              key={cat.id}
+              href={createFilterUrl('category', cat.slug)}
+              className={`px-3.5 py-1.5 rounded-full font-bold whitespace-nowrap transition-colors border ${
+                isSelected
+                  ? 'bg-primary text-white border-primary shadow-xs'
+                  : 'bg-surface-alt border-border text-muted hover:text-text'
+              }`}
+            >
+              {cat.name}
+            </Link>
+          );
+        })}
+        {FITS.map((fit) => {
+          const isSelected = selectedFit.toLowerCase() === fit.toLowerCase();
+          return (
+            <Link
+              key={fit}
+              href={createFilterUrl('fit', fit)}
+              className={`px-3.5 py-1.5 rounded-full font-bold whitespace-nowrap transition-colors border ${
+                isSelected
+                  ? 'bg-primary text-white border-primary shadow-xs'
+                  : 'bg-surface-alt border-border text-muted hover:text-text'
+              }`}
+            >
+              {fit} Fit
+            </Link>
+          );
+        })}
       </div>
 
       {/* Layout Grid: Filters Sidebar + Products Grid */}
