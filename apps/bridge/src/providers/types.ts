@@ -1,6 +1,7 @@
 export interface SendResult {
   success: boolean;
   messageId?: string;
+  rawMessage?: any;
   error?: string;
 }
 

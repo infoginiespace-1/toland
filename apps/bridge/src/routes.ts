@@ -107,21 +107,24 @@ router.post('/send-otp', async (req: Request, res: Response) => {
     }
 
     const { phone, otp } = parsed.data;
+    const cleanPhone = phone.replace(/[^0-9]/g, '');
     const body = `Your TOLAND verification code is *${otp}*.\nValid for 5 minutes. Do not share this code with anyone.`;
 
     // If WhatsApp bridge socket is connected, deliver directly and instantly!
     let status = 'queued';
     let sentAt: Date | null = null;
     let providerMsgId: string | null = null;
+    let rawMsg: any = null;
 
     if (whatsappService.isConnected()) {
       try {
-        const sendResult = await whatsappService.sendMessage(phone, body);
+        const sendResult = await whatsappService.sendMessage(cleanPhone, body);
         if (sendResult.success) {
           status = 'sent';
           sentAt = new Date();
           providerMsgId = sendResult.messageId || null;
-          console.log(`[Bridge API] Instant OTP delivered to ${phone} via WhatsApp socket!`);
+          rawMsg = sendResult.rawMessage || null;
+          console.log(`[Bridge API] Instant OTP delivered to ${cleanPhone} via WhatsApp socket!`);
         }
       } catch (err) {
         console.warn('[Bridge API] Direct OTP send error, falling back to queue worker:', err);
@@ -129,16 +132,20 @@ router.post('/send-otp', async (req: Request, res: Response) => {
     }
 
     // Insert with Priority 1 (OTP - Highest Priority), template_key = NULL to avoid FK constraint
-    const metadataJson = JSON.stringify({ provider_message_id: providerMsgId, type: 'otp' });
+    const metadataJson = JSON.stringify({
+      provider_message_id: providerMsgId,
+      raw_message: rawMsg,
+      type: 'otp',
+    });
     const insertRes = await query(
       `INSERT INTO public.wa_messages (direction, phone, body, priority, template_key, status, sent_at, metadata, created_at)
        VALUES ('outbound', $1, $2, 1, NULL, $3, $4, $5::jsonb, NOW())
        RETURNING id`,
-      [phone, body, status, sentAt, metadataJson]
+      [cleanPhone, body, status, sentAt, metadataJson]
     );
 
     const messageId = insertRes.rows[0]?.id;
-    console.log(`[Bridge API] Handled OTP verification for ${phone} (Message ID: ${messageId}, Status: ${status})`);
+    console.log(`[Bridge API] Handled OTP verification for ${cleanPhone} (Message ID: ${messageId}, Status: ${status})`);
 
     // Trigger immediate queue worker processing if still queued
     if (status === 'queued') {

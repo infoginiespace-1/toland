@@ -208,12 +208,20 @@ export class WhatsAppQueueWorker {
     const sendResult = await provider.sendMessage(message.phone, finalBody);
 
     if (sendResult.success) {
-      // Mark as sent
+      // Mark as sent and persist provider message ID & raw proto for retry decryption
+      const rawMsgJson = JSON.stringify(sendResult.rawMessage || {});
       await query(
         `UPDATE public.wa_messages
-         SET status = 'sent', sent_at = NOW(), error = NULL
+         SET status = 'sent', 
+             sent_at = NOW(), 
+             error = NULL,
+             metadata = jsonb_set(
+               jsonb_set(COALESCE(metadata, '{}'::jsonb), '{provider_message_id}', to_jsonb($2::text)),
+               '{raw_message}', 
+               $3::jsonb
+             )
          WHERE id = $1`,
-        [message.id]
+        [message.id, sendResult.messageId || '', rawMsgJson]
       );
 
       // Reset failure streak

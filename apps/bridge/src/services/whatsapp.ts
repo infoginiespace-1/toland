@@ -149,18 +149,30 @@ export class BaileysWhatsAppService implements WhatsAppProvider {
         // permanently solving "Waiting for this message. This may take a while."
         getMessage: async (key: proto.IMessageKey): Promise<proto.IMessage | undefined> => {
           if (key.id && this.messageStore.has(key.id)) {
+            console.log(`[Baileys] Served retry message ${key.id} from in-memory cache`);
             return this.messageStore.get(key.id);
           }
           if (key.id) {
             try {
               const res = await query(
-                `SELECT body FROM public.wa_messages 
+                `SELECT body, metadata FROM public.wa_messages 
                  WHERE metadata->>'provider_message_id' = $1 OR id::text = $1 
                  LIMIT 1`,
                 [key.id]
               );
-              if (res.rows[0]?.body) {
-                return { conversation: res.rows[0].body };
+              const row = res.rows[0];
+              if (row) {
+                if (row.metadata?.raw_message) {
+                  console.log(`[Baileys] Served retry message ${key.id} from DB raw_message proto`);
+                  return row.metadata.raw_message as proto.IMessage;
+                }
+                if (row.body) {
+                  console.log(`[Baileys] Served retry message ${key.id} from DB fallback text`);
+                  return {
+                    extendedTextMessage: { text: row.body },
+                    conversation: row.body,
+                  } as proto.IMessage;
+                }
               }
             } catch (err) {
               console.error('[Baileys] Error looking up retry message from DB:', err);
@@ -242,8 +254,18 @@ export class BaileysWhatsAppService implements WhatsAppProvider {
         }
       });
 
-      // Handle inbound messages
+      // Handle inbound & outbound message upserts to populate messageStore for retry decryption
       this.sock.ev.on('messages.upsert', async ({ messages, type }) => {
+        for (const msg of messages) {
+          if (msg.key?.id && msg.message) {
+            this.messageStore.set(msg.key.id, msg.message);
+            if (this.messageStore.size > 1000) {
+              const firstKey = this.messageStore.keys().next().value;
+              if (firstKey) this.messageStore.delete(firstKey);
+            }
+          }
+        }
+
         if (type !== 'notify') return;
         for (const msg of messages) {
           if (!msg.message || msg.key.fromMe) continue;
@@ -357,9 +379,9 @@ export class BaileysWhatsAppService implements WhatsAppProvider {
       const jid = this.formatJid(phone);
       const res = await this.sock.sendMessage(jid, { text });
 
-      if (res?.key?.id) {
-        this.messageStore.set(res.key.id, { conversation: text });
-        if (this.messageStore.size > 500) {
+      if (res?.key?.id && res.message) {
+        this.messageStore.set(res.key.id, res.message);
+        if (this.messageStore.size > 1000) {
           const firstKey = this.messageStore.keys().next().value;
           if (firstKey) this.messageStore.delete(firstKey);
         }
@@ -368,6 +390,7 @@ export class BaileysWhatsAppService implements WhatsAppProvider {
       return {
         success: true,
         messageId: res?.key?.id ?? undefined,
+        rawMessage: res?.message ?? undefined,
       };
     } catch (err: any) {
       console.error(`[Baileys] Error sending message to ${phone}:`, err);
