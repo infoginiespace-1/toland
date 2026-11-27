@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { SearchModal } from '@/components/storefront/search-modal';
 import { WishlistDrawer } from '@/components/storefront/wishlist-drawer';
+import { MobileBottomNav } from '@/components/storefront/mobile-bottom-nav';
 
 export function StorefrontNavbar() {
   const pathname = usePathname();
@@ -503,6 +504,12 @@ export function StorefrontNavbar() {
 
       {/* Global Saved Wishlist Slide-Over */}
       <WishlistDrawer isOpen={wishlistOpen} onClose={() => setWishlistOpen(false)} />
+
+      {/* Mobile Sticky Bottom App Bar */}
+      <MobileBottomNav
+        onOpenSearch={() => setSearchModalOpen(true)}
+        onOpenWishlist={() => setWishlistOpen(true)}
+      />
     </header>
   );
 }

@@ -81,6 +81,7 @@ export function ProductDetailView({
   const [reviewEmail, setReviewEmail] = useState('');
   const [reviewTitle, setReviewTitle] = useState('');
   const [reviewComment, setReviewComment] = useState('');
+  const [reviewImageUrl, setReviewImageUrl] = useState('');
   const [reviewError, setReviewError] = useState<string | null>(null);
 
   const selectedVariant = variants.find((v) => v.id === selectedVariantId) || variants[0];
@@ -223,6 +224,7 @@ export function ProductDetailView({
           rating: reviewRating,
           title: reviewTitle,
           comment: reviewComment,
+          image_url: reviewImageUrl.trim() || undefined,
         }),
       });
 
@@ -241,6 +243,7 @@ export function ProductDetailView({
         setReviewEmail('');
         setReviewTitle('');
         setReviewComment('');
+        setReviewImageUrl('');
       }, 2000);
     } catch (err: any) {
       setReviewError(err?.message || 'Server error. Please try again.');
@@ -451,6 +454,24 @@ export function ProductDetailView({
             <p className="text-xs sm:text-sm text-muted leading-relaxed pt-1">
               {product.description}
             </p>
+
+            {/* Live Social Proof & Scarcity Badges */}
+            <div className="flex flex-wrap items-center gap-2 pt-2">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-2xs font-bold bg-amber-50 text-amber-900 border border-amber-200">
+                <span>🔥</span>
+                <span>19 pairs ordered in last 24h</span>
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-2xs font-bold bg-blue-50 text-blue-900 border border-blue-200">
+                <span>👁️</span>
+                <span>28 people viewing right now</span>
+              </span>
+              {(selectedVariant?.stock_qty || 0) <= 5 && (selectedVariant?.stock_qty || 0) > 0 && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-2xs font-bold bg-rose-50 text-rose-800 border border-rose-200">
+                  <span>⚡</span>
+                  <span>Hurry, only {selectedVariant.stock_qty} left in Waist {selectedVariant.size}!</span>
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Pricing Box */}
@@ -765,6 +786,23 @@ export function ProductDetailView({
                   <p className="text-xs text-muted leading-relaxed">
                     &ldquo;{rev.comment}&rdquo;
                   </p>
+
+                  {rev.image_url && (
+                    <div className="mt-2 rounded-xl overflow-hidden border border-border max-h-48 bg-slate-50 relative group">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={rev.image_url}
+                        alt={rev.title || 'Customer fit photo'}
+                        className="w-full h-40 object-cover rounded-xl group-hover:scale-105 transition-transform duration-300"
+                        onError={(e) => {
+                          (e.target as HTMLElement).style.display = 'none';
+                        }}
+                      />
+                      <span className="absolute bottom-1.5 right-1.5 px-2 py-0.5 rounded-md bg-black/70 text-white text-[9px] font-bold tracking-wider uppercase">
+                        Fit Photo
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-3xs text-muted">
@@ -897,6 +935,37 @@ export function ProductDetailView({
                     placeholder="Tell us about the fabric feel, stitching quality, stone-washing fade, and overall fit..."
                     className="w-full px-3 py-2 rounded-xl border border-border bg-surface-alt text-xs focus:outline-none focus:border-primary leading-relaxed"
                   />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-text mb-1 uppercase tracking-wider">
+                    Fit Photo / Wearer Photo URL (Optional)
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="url"
+                      value={reviewImageUrl}
+                      onChange={(e) => setReviewImageUrl(e.target.value)}
+                      placeholder="https://... (e.g. Imgur, Cloudinary image link)"
+                      className="flex-1 px-3 py-2 rounded-xl border border-border bg-surface-alt text-xs focus:outline-none focus:border-primary"
+                    />
+                    {reviewImageUrl.trim() && (
+                      <div className="w-10 h-10 rounded-lg overflow-hidden border border-border shrink-0 bg-slate-100">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={reviewImageUrl}
+                          alt="Fit Preview"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-muted mt-1">
+                    Add a picture wearing this denim to showcase real fit and styling to buyers.
+                  </p>
                 </div>
 
                 {reviewError && (

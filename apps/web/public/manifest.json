@@ -1,0 +1,19 @@
+{
+  "name": "TOLAND Premium Denim",
+  "short_name": "TOLAND",
+  "description": "Manufacturer and direct retailer of premium denim jeans and apparel. Sheikhpura, Bihar.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#14532D",
+  "orientation": "portrait-primary",
+  "categories": ["shopping", "lifestyle", "fashion"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

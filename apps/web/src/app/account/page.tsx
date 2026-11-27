@@ -20,6 +20,7 @@ import {
   AlertCircle,
   Loader2,
   ExternalLink,
+  FileText,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 
@@ -313,6 +314,14 @@ export default function AccountPage() {
                         Delivering to: <strong className="text-text">{address.name}</strong>, {address.city}, {address.state} - {address.pincode}
                       </span>
                       <div className="flex items-center gap-2">
+                        <Link
+                          href={`/orders/${ord.order_no}/invoice`}
+                          className="px-3 py-1.5 rounded-lg border border-border text-xs font-semibold text-text hover:bg-surface-alt flex items-center gap-1"
+                          title="Print GST Tax Invoice"
+                        >
+                          <FileText className="w-3.5 h-3.5 text-primary" />
+                          <span>Invoice (PDF)</span>
+                        </Link>
                         <Link
                           href={`/returns?order_no=${ord.order_no}`}
                           className="px-3 py-1.5 rounded-lg border border-border text-xs font-semibold text-text hover:bg-surface-alt flex items-center gap-1"

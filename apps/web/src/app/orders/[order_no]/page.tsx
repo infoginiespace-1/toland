@@ -12,6 +12,7 @@ import {
   Phone,
   ArrowLeft,
   ShieldCheck,
+  FileText,
 } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -121,6 +122,13 @@ export default async function OrderTrackingPage({ params }: OrderTrackingPagePro
             <span className="px-3 py-1 rounded-full text-xs font-bold uppercase bg-surface border border-border text-muted">
               {orderRecord.payment_method?.toUpperCase()} · {orderRecord.payment_status}
             </span>
+            <Link
+              href={`/orders/${orderRecord.order_no}/invoice`}
+              className="px-3 py-1 rounded-full text-xs font-bold uppercase bg-white hover:bg-slate-50 text-slate-900 border border-border shadow-2xs flex items-center gap-1.5 transition-colors"
+            >
+              <FileText className="w-3.5 h-3.5 text-primary" />
+              <span>Tax Invoice (PDF)</span>
+            </Link>
           </div>
         </div>
 

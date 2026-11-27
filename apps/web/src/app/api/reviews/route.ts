@@ -48,6 +48,7 @@ export async function POST(request: NextRequest) {
       rating,
       title,
       comment,
+      image_url,
     } = body;
 
     if (!customer_name || !comment) {
@@ -71,6 +72,7 @@ export async function POST(request: NextRequest) {
         rating: numericRating,
         title: title?.trim() || null,
         comment: comment.trim(),
+        image_url: image_url?.trim() || null,
         is_verified_buyer: true,
         is_featured: false,
         status: 'approved', // Auto-approves for instant reflection, admin can moderate/delete anytime
