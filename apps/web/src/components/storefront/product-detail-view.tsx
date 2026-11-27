@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/context/cart-context';
+import { useWishlist } from '@/context/wishlist-context';
+import { FitFinderModal } from '@/components/storefront/fit-finder-modal';
 import {
   ShoppingBag,
   Zap,
@@ -24,6 +26,7 @@ import {
   Loader2,
   Quote,
   MapPin,
+  Heart,
 } from 'lucide-react';
 
 interface ProductDetailViewProps {
@@ -41,6 +44,7 @@ export function ProductDetailView({
 }: ProductDetailViewProps) {
   const router = useRouter();
   const { addToCart } = useCart();
+  const { isInWishlist, toggleWishlist } = useWishlist();
 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [selectedVariantId, setSelectedVariantId] = useState<string>(
@@ -48,6 +52,7 @@ export function ProductDetailView({
   );
   const [quantity, setQuantity] = useState(1);
   const [sizeChartOpen, setSizeChartOpen] = useState(false);
+  const [fitFinderOpen, setFitFinderOpen] = useState(false);
   const [addedToast, setAddedToast] = useState(false);
 
   // Reviews State
@@ -287,9 +292,35 @@ export function ProductDetailView({
               </span>
             )}
 
-            <span className="absolute top-4 right-4 z-10 px-3 py-1 rounded-full text-xs font-bold uppercase bg-surface/90 backdrop-blur-xs text-text border border-border">
-              {product.category?.name || 'Denim'}
-            </span>
+            <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+              <span className="px-3 py-1 rounded-full text-xs font-bold uppercase bg-surface/90 backdrop-blur-xs text-text border border-border">
+                {product.category?.name || 'Denim'}
+              </span>
+              <button
+                type="button"
+                onClick={() =>
+                  toggleWishlist({
+                    productId: product.id,
+                    name: product.name,
+                    slug: product.slug,
+                    price: currentPrice,
+                    mrp: product.mrp,
+                    image: currentImage,
+                    category: product.category?.name,
+                  })
+                }
+                className="w-8 h-8 rounded-full bg-white/95 backdrop-blur-xs border border-border flex items-center justify-center text-text hover:text-rose-500 shadow-sm transition-transform active:scale-90 cursor-pointer"
+                aria-label="Save to Wishlist"
+              >
+                <Heart
+                  className={`w-4 h-4 transition-colors ${
+                    isInWishlist(product.id)
+                      ? 'fill-rose-500 text-rose-500'
+                      : 'text-slate-600'
+                  }`}
+                />
+              </button>
+            </div>
 
             {currentImage ? (
               isCurrentVideo ? (
@@ -444,14 +475,24 @@ export function ProductDetailView({
               <span className="text-xs font-bold uppercase tracking-wider text-text">
                 Select Waist Size:
               </span>
-              <button
-                type="button"
-                onClick={() => setSizeChartOpen(true)}
-                className="text-xs text-primary font-bold hover:underline flex items-center gap-1 cursor-pointer"
-              >
-                <Ruler className="w-3.5 h-3.5" />
-                <span>Size Guide & Measurements</span>
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setFitFinderOpen(true)}
+                  className="text-xs font-bold text-accent hover:text-accent/80 flex items-center gap-1 cursor-pointer bg-accent/10 hover:bg-accent/15 px-2.5 py-1 rounded-lg border border-accent/25 transition-colors"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-accent" />
+                  <span>Find My Fit</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSizeChartOpen(true)}
+                  className="text-xs text-primary font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <Ruler className="w-3.5 h-3.5" />
+                  <span>Size Chart</span>
+                </button>
+              </div>
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -974,6 +1015,17 @@ export function ProductDetailView({
           </div>
         </div>
       )}
+
+      {/* Interactive Find My Fit Size Recommendation Modal */}
+      <FitFinderModal
+        isOpen={fitFinderOpen}
+        onClose={() => setFitFinderOpen(false)}
+        availableSizes={variants.map((v) => v.size)}
+        onSelectSize={(size) => {
+          const matching = variants.find((v) => v.size === size);
+          if (matching) setSelectedVariantId(matching.id);
+        }}
+      />
     </div>
   );
 }

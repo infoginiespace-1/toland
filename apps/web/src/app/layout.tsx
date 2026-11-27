@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { CartProvider } from '@/context/cart-context';
+import { WishlistProvider } from '@/context/wishlist-context';
 import { StorefrontNavbar } from '@/components/storefront/navbar';
 import { StorefrontFooter } from '@/components/storefront/footer';
 
@@ -18,11 +19,13 @@ export default function RootLayout({
     <html lang="en">
       <body className="min-h-screen bg-surface text-text flex flex-col">
         <CartProvider>
-          <StorefrontNavbar />
-          <div className="flex-1 flex flex-col">
-            {children}
-          </div>
-          <StorefrontFooter />
+          <WishlistProvider>
+            <StorefrontNavbar />
+            <div className="flex-1 flex flex-col">
+              {children}
+            </div>
+            <StorefrontFooter />
+          </WishlistProvider>
         </CartProvider>
       </body>
     </html>

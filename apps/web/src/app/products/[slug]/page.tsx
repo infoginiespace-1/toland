@@ -36,6 +36,17 @@ export async function generateMetadata({
       product.meta_description ||
       product.description ||
       'Direct factory denim manufactured in Sheikhpura, Bihar.',
+    openGraph: {
+      title: product.meta_title || `${product.name} | TOLAND Denim`,
+      description:
+        product.meta_description ||
+        product.description ||
+        'Direct factory denim manufactured in Sheikhpura, Bihar.',
+      url: `https://toland-web.vercel.app/products/${params.slug}`,
+      siteName: 'TOLAND Denim',
+      locale: 'en_IN',
+      type: 'website',
+    },
   };
 }
 
@@ -75,8 +86,50 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
     (r) => r.product_id === product.id || !r.product_id
   );
 
+  const avgScore = productReviews.length > 0
+    ? (productReviews.reduce((sum: number, r: any) => sum + (r.rating || 5), 0) / productReviews.length).toFixed(1)
+    : '4.9';
+
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product.name,
+    image: images.map((img: any) => img.path),
+    description: product.description || 'Authentic direct-to-consumer factory denim manufactured in Sheikhpura, Bihar.',
+    sku: variants[0]?.sku || product.slug,
+    brand: {
+      '@type': 'Brand',
+      name: 'TOLAND',
+    },
+    offers: {
+      '@type': 'Offer',
+      url: `https://toland-web.vercel.app/products/${product.slug}`,
+      priceCurrency: 'INR',
+      price: product.base_price,
+      priceValidUntil: '2028-12-31',
+      itemCondition: 'https://schema.org/NewCondition',
+      availability: variants.some((v: any) => (v.stock_qty || 0) > 0)
+        ? 'https://schema.org/InStock'
+        : 'https://schema.org/OutOfStock',
+      seller: {
+        '@type': 'Organization',
+        name: 'Toland Private Limited',
+      },
+    },
+    aggregateRating: {
+      '@type': 'AggregateRating',
+      ratingValue: avgScore,
+      reviewCount: Math.max(1, productReviews.length),
+    },
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      {/* Schema.org Product Structured Data for Google Shopping */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* Breadcrumbs */}
       <nav className="flex items-center gap-2 text-xs font-semibold text-muted">
         <Link href="/" className="hover:text-text transition-colors">

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCart } from '@/context/cart-context';
+import { useWishlist } from '@/context/wishlist-context';
 import { createClient } from '@/lib/supabase/client';
 import {
   ShoppingBag,
@@ -18,16 +19,20 @@ import {
   ChevronDown,
   Search,
   Truck,
+  Heart,
 } from 'lucide-react';
 import { SearchModal } from '@/components/storefront/search-modal';
+import { WishlistDrawer } from '@/components/storefront/wishlist-drawer';
 
 export function StorefrontNavbar() {
   const pathname = usePathname();
   const router = useRouter();
   const { itemCount } = useCart();
+  const { itemCount: wishlistCount } = useWishlist();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
+  const [wishlistOpen, setWishlistOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Auth state
@@ -333,6 +338,15 @@ export function StorefrontNavbar() {
                       )}
 
                       <Link
+                        href="/account"
+                        onClick={() => setUserDropdownOpen(false)}
+                        className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-text hover:bg-slate-50 transition-colors"
+                      >
+                        <User className="w-4 h-4 text-primary" />
+                        <span>My Account & Orders</span>
+                      </Link>
+
+                      <Link
                         href="/products"
                         onClick={() => setUserDropdownOpen(false)}
                         className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-text hover:bg-slate-50 transition-colors"
@@ -362,6 +376,21 @@ export function StorefrontNavbar() {
                 <span className="hidden lg:inline text-text-secondary font-medium">Login</span>
               </Link>
             )}
+
+            {/* Wishlist Button */}
+            <button
+              onClick={() => setWishlistOpen(true)}
+              className="relative p-2.5 rounded-full text-text hover:bg-surface-alt border border-transparent hover:border-border transition-colors cursor-pointer"
+              aria-label="Saved Items"
+              title="Saved Items"
+            >
+              <Heart className="w-4 h-4 text-rose-500" />
+              {wishlistCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
+                  {wishlistCount}
+                </span>
+              )}
+            </button>
 
             {/* Shopping Cart Button */}
             <Link
@@ -471,6 +500,9 @@ export function StorefrontNavbar() {
 
       {/* Global Live Search Modal */}
       <SearchModal isOpen={searchModalOpen} onClose={() => setSearchModalOpen(false)} />
+
+      {/* Global Saved Wishlist Slide-Over */}
+      <WishlistDrawer isOpen={wishlistOpen} onClose={() => setWishlistOpen(false)} />
     </header>
   );
 }

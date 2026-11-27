@@ -11,9 +11,15 @@ import {
   ShieldCheck,
   Send,
   Scissors,
+  Calculator,
+  TrendingUp,
+  ArrowRight,
+  ExternalLink,
 } from 'lucide-react';
 
 export default function B2BWholesalePage() {
+  const [calcQty, setCalcQty] = useState(250);
+
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -27,6 +33,25 @@ export default function B2BWholesalePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const getTierDetails = (qty: number) => {
+    if (qty < 100) {
+      return { rate: 599, tier: 'Tier 1: Starter Batch', leadTime: '3–5 Days', margin: '60%' };
+    } else if (qty < 300) {
+      return { rate: 499, tier: 'Tier 2: Trade Lot', leadTime: '5–8 Days', margin: '67%' };
+    } else if (qty < 600) {
+      return { rate: 449, tier: 'Tier 2+: Regional Batch', leadTime: '8–12 Days', margin: '70%' };
+    } else {
+      return { rate: 399, tier: 'Tier 3: Mill Direct Private Label', leadTime: '12–16 Days', margin: '73%' };
+    }
+  };
+
+  const currentTier = getTierDetails(calcQty);
+  const subtotal = calcQty * currentTier.rate;
+  const gst = Math.round(subtotal * 0.12);
+  const totalWithGst = subtotal + gst;
+  const projectedRetailRevenue = calcQty * 1499;
+  const projectedProfit = projectedRetailRevenue - subtotal;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -139,6 +164,127 @@ export default function B2BWholesalePage() {
               <span>Priority Floor Production in Bihar</span>
             </li>
           </ul>
+        </div>
+      </div>
+
+      {/* Interactive Live Bulk Tier Calculator */}
+      <div className="p-6 sm:p-8 rounded-3xl bg-slate-900 text-white shadow-xl space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
+          <div>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-400/30">
+              <Calculator className="w-3.5 h-3.5" />
+              <span>Real-Time Wholesale Rate Estimator</span>
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black mt-2">
+              Calculate Your Bulk Manufacturing Lot
+            </h2>
+            <p className="text-xs text-white/70 mt-1">
+              Move the slider to estimate wholesale per-piece rates, production turnaround, and retail margins.
+            </p>
+          </div>
+
+          <div className="text-left sm:text-right">
+            <span className="text-3xs uppercase tracking-wider text-emerald-400 font-bold block">Active Rate Tier</span>
+            <span className="text-base font-extrabold text-white">{currentTier.tier}</span>
+          </div>
+        </div>
+
+        {/* Quantity Controls */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-white/80">Batch Order Quantity:</span>
+            <div className="flex items-baseline gap-1">
+              <span className="text-3xl font-black font-mono text-emerald-400">{calcQty}</span>
+              <span className="text-xs text-white/60 font-semibold">pieces</span>
+            </div>
+          </div>
+
+          <input
+            type="range"
+            min={50}
+            max={2000}
+            step={25}
+            value={calcQty}
+            onChange={(e) => {
+              const val = Number(e.target.value);
+              setCalcQty(val);
+              setFormData((prev) => ({ ...prev, estimatedQty: `${val} pieces` }));
+            }}
+            className="w-full accent-emerald-500 h-2.5 bg-white/20 rounded-lg cursor-pointer"
+          />
+
+          <div className="flex flex-wrap gap-2 pt-1">
+            <span className="text-2xs text-white/60 self-center mr-1">Quick Select:</span>
+            {[50, 100, 250, 500, 1000, 2000].map((q) => (
+              <button
+                key={q}
+                type="button"
+                onClick={() => {
+                  setCalcQty(q);
+                  setFormData((prev) => ({ ...prev, estimatedQty: `${q} pieces` }));
+                }}
+                className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+                  calcQty === q
+                    ? 'bg-emerald-500 text-slate-900 shadow-sm'
+                    : 'bg-white/10 hover:bg-white/20 text-white'
+                }`}
+              >
+                {q} pcs
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Live Financial Breakdown Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-5 rounded-2xl bg-white/5 border border-white/10">
+          <div>
+            <span className="text-3xs uppercase tracking-wider font-bold text-white/60 block">Factory Rate</span>
+            <div className="text-2xl font-black text-white font-mono mt-0.5">₹{currentTier.rate}<span className="text-xs font-normal text-white/60">/pc</span></div>
+            <span className="text-3xs text-emerald-400 font-bold">~{currentTier.margin} Retail Margin</span>
+          </div>
+
+          <div>
+            <span className="text-3xs uppercase tracking-wider font-bold text-white/60 block">Subtotal (Pre-Tax)</span>
+            <div className="text-xl font-black text-white font-mono mt-0.5">₹{subtotal.toLocaleString('en-IN')}</div>
+            <span className="text-3xs text-white/60">100% Combed Cotton</span>
+          </div>
+
+          <div>
+            <span className="text-3xs uppercase tracking-wider font-bold text-white/60 block">Estimated GST (12%)</span>
+            <div className="text-xl font-black text-white font-mono mt-0.5">₹{gst.toLocaleString('en-IN')}</div>
+            <span className="text-3xs text-white/60">Input Tax Credit Eligible</span>
+          </div>
+
+          <div>
+            <span className="text-3xs uppercase tracking-wider font-bold text-emerald-400 block">Est. Invoice Total</span>
+            <div className="text-2xl font-black text-emerald-400 font-mono mt-0.5">₹{totalWithGst.toLocaleString('en-IN')}</div>
+            <span className="text-3xs text-white/60">Turnaround: {currentTier.leadTime}</span>
+          </div>
+        </div>
+
+        {/* Retail Profit Potential Banner */}
+        <div className="p-4 rounded-2xl bg-emerald-950/60 border border-emerald-500/30 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+              <TrendingUp className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-white">Projected Boutique Resale Profit:</div>
+              <div className="text-2xs text-white/70">
+                At standard retail MRP (₹1,499/pc), your store earns approximately <strong className="text-emerald-400 font-mono">₹{projectedProfit.toLocaleString('en-IN')}</strong> gross margin on this batch.
+              </div>
+            </div>
+          </div>
+
+          <a
+            href={`https://wa.me/918797186001?text=Namaste%20TOLAND,%20I%20am%20interested%20in%20a%20B2B%20Wholesale%20Order%20of%20${calcQty}%20pcs%20at%20₹${currentTier.rate}/pc%20(Estimated%20Invoice:%20₹${totalWithGst.toLocaleString('en-IN')}).%20Please%20share%20catalog%20and%20GST%20quotation.`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-5 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-bold text-xs flex items-center gap-2 shrink-0 transition-colors cursor-pointer"
+          >
+            <Phone className="w-4 h-4" />
+            <span>Lock In This Quote on WhatsApp &rarr;</span>
+          </a>
         </div>
       </div>
 
