@@ -166,17 +166,17 @@ export function ProductDetailView({ product, variants, images = [] }: ProductDet
             <div className="p-3 rounded-xl bg-surface-alt border border-border">
               <Truck className="w-4 h-4 mx-auto text-primary mb-1" />
               <span className="font-semibold text-text">Free Shipping</span>
-              <div className="text-3xs">Orders &gt; ₹999</div>
+              <div className="text-[11px] text-muted">Orders &gt; ₹999</div>
             </div>
             <div className="p-3 rounded-xl bg-surface-alt border border-border">
               <RotateCcw className="w-4 h-4 mx-auto text-primary mb-1" />
               <span className="font-semibold text-text">7-Day Exchange</span>
-              <div className="text-3xs">Doorstep pickup</div>
+              <div className="text-[11px] text-muted">Doorstep pickup</div>
             </div>
             <div className="p-3 rounded-xl bg-surface-alt border border-border">
               <ShieldCheck className="w-4 h-4 mx-auto text-primary mb-1" />
               <span className="font-semibold text-text">Direct Factory</span>
-              <div className="text-3xs">100% Cotton</div>
+              <div className="text-[11px] text-muted">100% Cotton</div>
             </div>
           </div>
         </div>
@@ -185,12 +185,12 @@ export function ProductDetailView({ product, variants, images = [] }: ProductDet
         <div className="space-y-6">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-accent">
+              <span className="text-xs font-semibold uppercase tracking-wider text-accent">
                 {selectedVariant?.fit || 'Regular'} Fit · {selectedVariant?.wash || 'Raw'} Wash
               </span>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-black text-text tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-bold text-text tracking-tight">
               {product.name}
             </h1>
 
@@ -202,16 +202,16 @@ export function ProductDetailView({ product, variants, images = [] }: ProductDet
           {/* Pricing Box */}
           <div className="p-4 rounded-xl bg-surface-alt border border-border flex items-center justify-between">
             <div className="flex items-baseline gap-3">
-              <div className="text-3xl font-black text-text">₹{currentPrice}</div>
+              <div className="text-3xl font-bold text-slate-900">₹{currentPrice}</div>
               {product.mrp && (
                 <div className="text-sm text-muted line-through">MRP ₹{product.mrp}</div>
               )}
             </div>
             <div className="text-right">
-              <span className="text-2xs uppercase tracking-wider font-bold text-success bg-success/15 px-2.5 py-1 rounded-full border border-success/30">
+              <span className="text-[10px] uppercase tracking-wider font-semibold text-success bg-success/15 px-2.5 py-1 rounded-full border border-success/30">
                 GST Included (12%)
               </span>
-              <div className="text-3xs text-muted mt-1">HSN Code: {product.hsn_code || '620342'}</div>
+              <div className="text-[11px] text-muted mt-1">HSN Code: {product.hsn_code || '620342'}</div>
             </div>
           </div>
 

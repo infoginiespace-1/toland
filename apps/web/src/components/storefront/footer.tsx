@@ -23,14 +23,14 @@ export function StorefrontFooter() {
   return (
     <footer className="bg-surface-alt border-t border-border mt-auto">
       {/* 3 Core Value Badges */}
-      <div className="border-b border-border py-6 bg-surface">
+      <div className="border-b border-border py-6 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
               <Truck className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <div className="text-xs font-bold uppercase tracking-wider text-text">Direct Factory Shipping</div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-text">Direct Factory Shipping</div>
               <div className="text-xs text-muted">Free delivery all across India on orders above ₹999.</div>
             </div>
           </div>
@@ -40,7 +40,7 @@ export function StorefrontFooter() {
               <ShieldCheck className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <div className="text-xs font-bold uppercase tracking-wider text-text">100% Genuine Denim</div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-text">100% Genuine Denim</div>
               <div className="text-xs text-muted">Ring-spun cotton with authentic in-house washes.</div>
             </div>
           </div>
@@ -50,7 +50,7 @@ export function StorefrontFooter() {
               <RotateCcw className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <div className="text-xs font-bold uppercase tracking-wider text-text">Easy 7-Day Exchanges</div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-text">Easy 7-Day Exchanges</div>
               <div className="text-xs text-muted">Hassle-free size replacement and fit exchanges.</div>
             </div>
           </div>
@@ -63,11 +63,11 @@ export function StorefrontFooter() {
           {/* Brand Info */}
           <div className="lg:col-span-2 space-y-4">
             <Link href="/" className="inline-block">
-              <span className="text-2xl font-black tracking-tighter text-text flex items-center gap-1">
+              <span className="text-2xl font-extrabold tracking-tight text-text flex items-center gap-1">
                 TOLAND
                 <span className="w-2 h-2 rounded-full bg-accent inline-block"></span>
               </span>
-              <span className="text-3xs uppercase tracking-widest font-bold text-muted block mt-0.5">
+              <span className="text-[10px] uppercase tracking-widest font-semibold text-muted block mt-0.5">
                 Toland Private Limited
               </span>
             </Link>

@@ -138,11 +138,11 @@ export function StorefrontNavbar() {
     'My Account';
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-surface-alt/95 backdrop-blur-md border-b border-border shadow-xs">
+    <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-border shadow-subtle">
       {/* Top Announcement Ribbon */}
-      <div className="bg-primary text-white text-2xs sm:text-xs font-semibold py-1.5 px-4 text-center tracking-wide flex items-center justify-center gap-2">
-        <span className="inline-block w-1.5 h-1.5 rounded-full bg-accent animate-ping"></span>
-        <span>Factory Direct Premium Denim · Sheikhpura (Bihar) · Free Express Shipping on Orders Above ₹999</span>
+      <div className="bg-primary text-white text-[11px] sm:text-xs font-medium py-1.5 px-4 text-center tracking-normal flex items-center justify-center gap-2">
+        <span className="inline-block w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
+        <span>Factory Direct Premium Denim · Sheikhpura (Bihar) · Free Express Shipping Above ₹999</span>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -151,33 +151,33 @@ export function StorefrontNavbar() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 -ml-2 rounded-lg text-text hover:bg-surface transition-colors"
+              className="md:hidden p-2 -ml-2 rounded-lg text-text hover:bg-surface-alt transition-colors"
               aria-label="Toggle mobile menu"
             >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
 
-            <Link href="/" className="flex flex-col">
-              <span className="text-2xl font-black tracking-tighter text-text leading-none flex items-center gap-1">
+            <Link href="/" className="flex flex-col group">
+              <span className="text-xl sm:text-2xl font-extrabold tracking-tight text-text leading-none flex items-center gap-1">
                 TOLAND
                 <span className="w-2 h-2 rounded-full bg-accent inline-block"></span>
               </span>
-              <span className="text-3xs uppercase tracking-widest font-bold text-muted mt-0.5">
+              <span className="text-[10px] tracking-widest font-semibold text-muted uppercase mt-0.5">
                 Denim & Casuals
               </span>
             </Link>
           </div>
 
           {/* Desktop Nav Links */}
-          <nav className="hidden md:flex items-center gap-6">
+          <nav className="hidden md:flex items-center gap-7">
             {navLinks.map((link) => {
               const isActive = pathname === link.href;
               return (
                 <Link
                   key={link.name}
                   href={link.href}
-                  className={`text-xs font-bold tracking-wide uppercase transition-colors hover:text-primary ${
-                    isActive ? 'text-primary border-b-2 border-primary pb-0.5' : 'text-muted'
+                  className={`text-sm font-medium transition-colors hover:text-text ${
+                    isActive ? 'text-primary font-semibold border-b-2 border-primary pb-0.5' : 'text-muted'
                   }`}
                 >
                   {link.name}
@@ -190,7 +190,7 @@ export function StorefrontNavbar() {
           <div className="flex items-center gap-3">
             <Link
               href="/b2b"
-              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-surface border border-border text-text hover:bg-surface-alt hover:border-primary/50 transition-colors"
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-surface-alt border border-border text-text hover:bg-slate-100 transition-colors"
             >
               <Sparkles className="w-3.5 h-3.5 text-accent" />
               <span>Bulk / B2B</span>
@@ -198,15 +198,15 @@ export function StorefrontNavbar() {
 
             {/* User Auth State & Dropdown */}
             {authLoading ? (
-              <div className="w-8 h-8 rounded-full bg-surface animate-pulse" />
+              <div className="w-8 h-8 rounded-full bg-surface-alt animate-pulse" />
             ) : user ? (
               <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setUserDropdownOpen(!userDropdownOpen)}
                   className={`p-1.5 sm:px-3 sm:py-1.5 rounded-full border transition-all flex items-center gap-1.5 text-xs font-semibold ${
                     isAdmin
-                      ? 'bg-primary/10 border-primary/30 text-primary hover:bg-primary/20'
-                      : 'bg-surface border-border text-text hover:bg-surface-alt'
+                      ? 'bg-primary/10 border-primary/20 text-primary hover:bg-primary/15'
+                      : 'bg-surface-alt border-border text-text hover:bg-slate-100'
                   }`}
                   aria-label="User Account Menu"
                 >
@@ -223,12 +223,12 @@ export function StorefrontNavbar() {
 
                 {/* Dropdown Menu */}
                 {userDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-56 rounded-xl bg-surface-alt border border-border shadow-lg py-2 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+                  <div className="absolute right-0 mt-2 w-56 rounded-xl bg-white border border-border shadow-card-hover py-2 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
                     <div className="px-4 py-2 border-b border-border">
                       <p className="text-xs font-bold text-text truncate">{displayName}</p>
-                      <p className="text-3xs text-muted truncate">{user.email || user.phone}</p>
+                      <p className="text-[11px] text-muted truncate">{user.email || user.phone}</p>
                       {isAdmin && (
-                        <span className="inline-block mt-1 px-2 py-0.5 rounded text-3xs font-extrabold uppercase bg-primary text-white">
+                        <span className="inline-block mt-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide uppercase bg-primary/10 text-primary border border-primary/20">
                           Administrator
                         </span>
                       )}
@@ -239,7 +239,7 @@ export function StorefrontNavbar() {
                         <Link
                           href="/admin"
                           onClick={() => setUserDropdownOpen(false)}
-                          className="flex items-center gap-2.5 px-4 py-2 text-xs font-bold text-primary hover:bg-surface transition-colors"
+                          className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-primary hover:bg-slate-50 transition-colors"
                         >
                           <ShieldCheck className="w-4 h-4 text-primary" />
                           <span>Admin Dashboard</span>
@@ -249,7 +249,7 @@ export function StorefrontNavbar() {
                       <Link
                         href="/products"
                         onClick={() => setUserDropdownOpen(false)}
-                        className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-text hover:bg-surface transition-colors"
+                        className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-text hover:bg-slate-50 transition-colors"
                       >
                         <ShoppingBag className="w-4 h-4 text-muted" />
                         <span>Browse Catalog</span>
@@ -257,7 +257,7 @@ export function StorefrontNavbar() {
 
                       <button
                         onClick={handleSignOut}
-                        className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-danger hover:bg-danger/10 transition-colors text-left"
+                        className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-danger hover:bg-danger/10 transition-colors text-left"
                       >
                         <LogOut className="w-4 h-4" />
                         <span>Sign Out</span>
@@ -269,23 +269,23 @@ export function StorefrontNavbar() {
             ) : (
               <Link
                 href="/auth/login"
-                className="p-2 sm:px-3 sm:py-1.5 rounded-full text-text hover:bg-surface border border-transparent hover:border-border transition-colors flex items-center gap-1.5 text-xs font-semibold"
+                className="p-2 sm:px-3 sm:py-1.5 rounded-full text-text hover:bg-surface-alt border border-transparent hover:border-border transition-colors flex items-center gap-1.5 text-xs font-semibold"
                 title="Customer Login / Admin"
               >
                 <User className="w-4 h-4 text-primary" />
-                <span className="hidden lg:inline text-muted font-bold">Login</span>
+                <span className="hidden lg:inline text-text-secondary font-medium">Login</span>
               </Link>
             )}
 
             {/* Shopping Cart Button */}
             <Link
               href="/cart"
-              className="relative p-2.5 rounded-full bg-primary text-white hover:bg-primary-hover shadow-sm transition-all"
+              className="relative p-2.5 rounded-full bg-slate-900 text-white hover:bg-slate-800 shadow-sm transition-all"
               aria-label="Shopping Cart"
             >
               <ShoppingBag className="w-4 h-4" />
               {itemCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-danger text-white text-3xs font-extrabold w-4 h-4 rounded-full flex items-center justify-center animate-bounce shadow-xs">
+                <span className="absolute -top-1 -right-1 bg-accent text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
                   {itemCount}
                 </span>
               )}
@@ -296,18 +296,18 @@ export function StorefrontNavbar() {
 
       {/* Mobile Drawer Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-surface-alt border-b border-border px-4 pt-3 pb-6 space-y-4 animate-in slide-in-from-top-2 duration-200">
+        <div className="md:hidden bg-white border-b border-border px-4 pt-3 pb-6 space-y-4 animate-in slide-in-from-top-2 duration-200">
           {/* User Status Bar in Mobile */}
-          <div className="p-3 rounded-xl bg-surface border border-border flex items-center justify-between">
+          <div className="p-3 rounded-xl bg-surface-alt border border-border flex items-center justify-between">
             {user ? (
               <div className="flex items-center justify-between w-full">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary font-bold text-xs">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold text-xs">
                     {isAdmin ? <ShieldCheck className="w-4 h-4" /> : <User className="w-4 h-4" />}
                   </div>
                   <div>
                     <div className="text-xs font-bold text-text truncate max-w-[160px]">{displayName}</div>
-                    <div className="text-3xs text-muted">{isAdmin ? 'Administrator' : 'Customer'}</div>
+                    <div className="text-[11px] text-muted">{isAdmin ? 'Administrator' : 'Customer'}</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -315,7 +315,7 @@ export function StorefrontNavbar() {
                     <Link
                       href="/admin"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="px-2.5 py-1 rounded-lg bg-primary text-white text-3xs font-bold uppercase"
+                      className="px-2.5 py-1 rounded-lg bg-primary text-white text-xs font-semibold"
                     >
                       Dashboard
                     </Link>
@@ -333,7 +333,7 @@ export function StorefrontNavbar() {
               <Link
                 href="/auth/login"
                 onClick={() => setMobileMenuOpen(false)}
-                className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-primary text-white text-xs font-bold"
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-primary text-white text-xs font-semibold"
               >
                 <User className="w-4 h-4" />
                 <span>Sign In / Register</span>
@@ -341,13 +341,13 @@ export function StorefrontNavbar() {
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-2 text-xs font-bold">
+          <div className="grid grid-cols-2 gap-2 text-xs font-medium">
             {navLinks.map((link) => (
               <Link
                 key={link.name}
                 href={link.href}
                 onClick={() => setMobileMenuOpen(false)}
-                className="p-3 rounded-lg bg-surface border border-border text-text hover:border-primary transition-colors text-center"
+                className="p-3 rounded-lg bg-surface-alt border border-border text-text hover:border-primary transition-colors text-center"
               >
                 {link.name}
               </Link>
@@ -359,12 +359,12 @@ export function StorefrontNavbar() {
               href="https://wa.me/918797186001"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-success font-semibold"
+              className="inline-flex items-center gap-1.5 text-accent font-semibold"
             >
               <Phone className="w-3.5 h-3.5" />
               <span>WhatsApp: +91 8797186001</span>
             </a>
-            <span className="text-3xs uppercase tracking-wider font-semibold text-muted">
+            <span className="text-[11px] font-medium text-muted">
               Sheikhpura, Bihar
             </span>
           </div>

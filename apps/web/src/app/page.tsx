@@ -45,19 +45,19 @@ export default async function HomePage() {
   return (
     <div className="space-y-16 pb-20">
       {/* 1. HERO SECTION */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-surface-alt via-surface to-surface border-b border-border py-12 sm:py-20">
+      <section className="relative overflow-hidden bg-gradient-to-b from-surface-alt via-white to-white border-b border-border py-12 sm:py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
             {/* Left Content */}
             <div className="lg:col-span-7 space-y-6">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold bg-primary/10 text-primary border border-primary/25 shadow-2xs">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
                 <Sparkles className="w-3.5 h-3.5 text-accent" />
                 <span>Direct From Sheikhpura Manufacturing Facility</span>
               </div>
 
-              <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-text leading-[1.08]">
+              <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-text leading-[1.1]">
                 Heavyweight Denim. <br />
-                <span className="text-primary underline decoration-accent decoration-wavy decoration-2">
+                <span className="text-primary">
                   Factory Direct Value.
                 </span>
               </h1>
@@ -70,7 +70,7 @@ export default async function HomePage() {
               <div className="flex flex-wrap items-center gap-4 pt-2">
                 <Link
                   href="/products"
-                  className="px-6 py-3.5 rounded-xl bg-primary text-white text-sm font-extrabold uppercase tracking-wide hover:bg-primary-hover shadow-md hover:shadow-lg transition-all flex items-center gap-2"
+                  className="px-6 py-3.5 rounded-xl bg-slate-900 text-white text-sm font-semibold tracking-normal hover:bg-slate-800 shadow-card hover:shadow-card-hover transition-all flex items-center gap-2"
                 >
                   <span>Shop Denim Collection</span>
                   <ArrowRight className="w-4 h-4" />
@@ -78,14 +78,14 @@ export default async function HomePage() {
 
                 <Link
                   href="/b2b"
-                  className="px-6 py-3.5 rounded-xl bg-surface border border-border text-text text-sm font-bold hover:bg-surface-alt hover:border-primary transition-colors flex items-center gap-2"
+                  className="px-6 py-3.5 rounded-xl bg-white border border-border text-text text-sm font-semibold hover:bg-surface-alt transition-colors flex items-center gap-2 shadow-subtle"
                 >
                   <span>Wholesale & B2B Tiers</span>
                 </Link>
               </div>
 
               {/* Quick Guarantees */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-6 border-t border-border/60 text-xs font-semibold text-muted">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-6 border-t border-border text-xs font-medium text-muted">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-accent shrink-0" />
                   <span>13.5oz Ring-Spun Cotton</span>
@@ -103,7 +103,7 @@ export default async function HomePage() {
 
             {/* Right Hero Visual Showcase */}
             <div className="lg:col-span-5 relative">
-              <div className="relative aspect-4/5 rounded-3xl overflow-hidden border border-border shadow-xl bg-surface-alt group">
+              <div className="relative aspect-4/5 rounded-2xl overflow-hidden border border-border shadow-card bg-surface-alt group">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?auto=format&fit=crop&w=1200&q=80"
@@ -111,10 +111,10 @@ export default async function HomePage() {
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-6 text-white">
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-accent/90 text-primary font-mono text-3xs font-extrabold uppercase tracking-wider w-fit mb-2">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/95 text-slate-900 font-mono text-[10px] font-bold uppercase tracking-wider w-fit mb-2 shadow-xs">
                     Khetalpura 811101
                   </div>
-                  <h3 className="text-xl font-black">Authentic Indian Craftsmanship</h3>
+                  <h3 className="text-xl font-bold">Authentic Indian Craftsmanship</h3>
                   <p className="text-xs text-white/80 mt-1">
                     Every pair undergoes 14 distinct quality inspections before dispatch.
                   </p>
@@ -129,12 +129,12 @@ export default async function HomePage() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-end justify-between mb-8">
           <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-accent">Browse By Fit</span>
-            <h2 className="text-2xl sm:text-3xl font-black text-text tracking-tight mt-1">Denim Categories</h2>
+            <span className="text-xs font-semibold uppercase tracking-wider text-accent">Browse By Fit</span>
+            <h2 className="text-2xl sm:text-3xl font-bold text-text tracking-tight mt-1">Denim Categories</h2>
           </div>
           <Link
             href="/products"
-            className="text-xs font-bold text-primary hover:text-accent flex items-center gap-1 transition-colors uppercase tracking-wider"
+            className="text-xs font-semibold text-primary hover:text-accent flex items-center gap-1 transition-colors uppercase tracking-wider"
           >
             <span>View All</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -147,18 +147,18 @@ export default async function HomePage() {
               <Link
                 key={category.id}
                 href={`/products?category=${category.slug}`}
-                className="group relative p-6 rounded-2xl bg-surface-alt border border-border hover:border-primary hover:shadow-md transition-all flex flex-col justify-between min-h-[160px]"
+                className="group relative p-5 rounded-xl bg-white border border-border hover:border-slate-300 hover:shadow-card transition-all flex flex-col justify-between min-h-[150px]"
               >
                 <div className="space-y-1">
-                  <span className="text-3xs font-mono font-bold uppercase tracking-wider text-muted">
+                  <span className="text-[10px] font-medium uppercase tracking-wider text-muted">
                     Sheikhpura Factory
                   </span>
-                  <h3 className="text-lg font-black text-text group-hover:text-primary transition-colors">
+                  <h3 className="text-base font-bold text-text group-hover:text-primary transition-colors">
                     {category.name}
                   </h3>
                 </div>
 
-                <div className="flex items-center justify-between pt-4 border-t border-border/50 text-xs font-bold text-primary">
+                <div className="flex items-center justify-between pt-4 border-t border-border/60 text-xs font-semibold text-primary">
                   <span>Explore Collection</span>
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </div>
@@ -174,11 +174,11 @@ export default async function HomePage() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-4">
           <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-accent">Signature Styles</span>
-            <h2 className="text-2xl sm:text-3xl font-black text-text tracking-tight mt-1">Featured Denim</h2>
+            <span className="text-xs font-semibold uppercase tracking-wider text-accent">Signature Styles</span>
+            <h2 className="text-2xl sm:text-3xl font-bold text-text tracking-tight mt-1">Featured Denim</h2>
             <p className="text-xs text-muted mt-1">Built to withstand years of hard wear. Factory direct pricing.</p>
           </div>
-          <div className="inline-flex items-center gap-2 text-xs font-bold text-primary bg-primary/10 px-3 py-1.5 rounded-full border border-primary/20">
+          <div className="inline-flex items-center gap-2 text-xs font-semibold text-primary bg-primary/10 px-3 py-1.5 rounded-full border border-primary/20">
             <Percent className="w-3.5 h-3.5" />
             <span>Up to 50% Off Retail Prices</span>
           </div>
@@ -196,20 +196,20 @@ export default async function HomePage() {
               return (
                 <div
                   key={product.id}
-                  className="group rounded-2xl bg-surface-alt border border-border hover:border-primary/60 hover:shadow-lg transition-all flex flex-col justify-between overflow-hidden"
+                  className="group rounded-xl bg-white border border-border hover:border-slate-300 hover:shadow-card-hover transition-all flex flex-col justify-between overflow-hidden"
                 >
                   {/* Image Visual Container */}
                   <Link
                     href={`/products/${product.slug}`}
-                    className="relative aspect-4/5 bg-surface border-b border-border overflow-hidden block"
+                    className="relative aspect-4/5 bg-surface-alt border-b border-border overflow-hidden block"
                   >
                     {/* Badge */}
                     {discountPercent > 0 && (
-                      <span className="absolute top-3 left-3 z-10 px-2 py-0.5 rounded text-3xs font-extrabold uppercase bg-danger text-white shadow-xs">
+                      <span className="absolute top-3 left-3 z-10 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-danger text-white shadow-subtle">
                         {discountPercent}% OFF
                       </span>
                     )}
-                    <span className="absolute top-3 right-3 z-10 px-2 py-0.5 rounded text-3xs font-bold uppercase bg-surface/90 backdrop-blur-xs text-text border border-border">
+                    <span className="absolute top-3 right-3 z-10 px-2 py-0.5 rounded-full text-[10px] font-medium uppercase bg-white/90 backdrop-blur-xs text-slate-700 border border-slate-200">
                       {product.category?.name || 'Denim'}
                     </span>
 
@@ -222,29 +222,29 @@ export default async function HomePage() {
                         loading="lazy"
                       />
                     ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-gradient-to-br from-surface-alt to-surface">
-                        <div className="w-20 h-20 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary mb-3 group-hover:scale-105 transition-transform">
-                          <Layers className="w-10 h-10" />
+                      <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-gradient-to-br from-surface-alt to-white">
+                        <div className="w-16 h-16 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary mb-3 group-hover:scale-105 transition-transform">
+                          <Layers className="w-8 h-8" />
                         </div>
-                        <span className="text-xs font-bold text-text line-clamp-1">{product.name}</span>
-                        <span className="text-3xs text-muted font-medium mt-1">100% Ring-Spun Cotton</span>
+                        <span className="text-xs font-semibold text-text line-clamp-1">{product.name}</span>
+                        <span className="text-[11px] text-muted font-normal mt-1">100% Ring-Spun Cotton</span>
                       </div>
                     )}
                   </Link>
 
                   {/* Details */}
-                  <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                  <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
                     <div>
-                      <h3 className="text-sm font-bold text-text line-clamp-2 group-hover:text-primary transition-colors">
+                      <h3 className="text-sm font-semibold text-text line-clamp-1 group-hover:text-primary transition-colors">
                         {product.name}
                       </h3>
 
                       {/* Sizes */}
-                      <div className="flex flex-wrap gap-1 mt-2.5">
+                      <div className="flex flex-wrap gap-1 mt-2">
                         {availableSizes.map((size: any) => (
                           <span
                             key={size}
-                            className="px-2 py-0.5 rounded bg-surface border border-border text-3xs font-mono font-semibold text-muted"
+                            className="px-1.5 py-0.5 rounded bg-surface-alt border border-border text-[11px] font-mono font-medium text-muted"
                           >
                             {size}
                           </span>
@@ -254,15 +254,15 @@ export default async function HomePage() {
 
                     <div className="pt-3 border-t border-border flex items-center justify-between">
                       <div>
-                        <div className="text-base font-black text-text">₹{product.base_price}</div>
+                        <div className="text-base font-bold text-slate-900">₹{product.base_price}</div>
                         {product.mrp && (
-                          <div className="text-3xs text-muted line-through">MRP ₹{product.mrp}</div>
+                          <div className="text-xs text-muted line-through">MRP ₹{product.mrp}</div>
                         )}
                       </div>
 
                       <Link
                         href={`/products/${product.slug}`}
-                        className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary-hover transition-colors shadow-2xs"
+                        className="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-medium hover:bg-slate-800 transition-colors shadow-subtle"
                       >
                         View Details
                       </Link>
