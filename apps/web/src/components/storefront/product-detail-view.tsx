@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/context/cart-context';
 import { useWishlist } from '@/context/wishlist-context';
+import { useCompare } from '@/context/compare-context';
 import { FitFinderModal } from '@/components/storefront/fit-finder-modal';
 import {
   ShoppingBag,
@@ -27,6 +28,7 @@ import {
   Quote,
   MapPin,
   Heart,
+  Scale,
 } from 'lucide-react';
 
 interface ProductDetailViewProps {
@@ -45,6 +47,7 @@ export function ProductDetailView({
   const router = useRouter();
   const { addToCart } = useCart();
   const { isInWishlist, toggleWishlist } = useWishlist();
+  const { addToCompare, isCompared } = useCompare();
 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [selectedVariantId, setSelectedVariantId] = useState<string>(
@@ -54,6 +57,24 @@ export function ProductDetailView({
   const [sizeChartOpen, setSizeChartOpen] = useState(false);
   const [fitFinderOpen, setFitFinderOpen] = useState(false);
   const [addedToast, setAddedToast] = useState(false);
+  const [showStickyBar, setShowStickyBar] = useState(false);
+  const mainActionsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const target = mainActionsRef.current;
+    if (!target) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        // Show sticky bar when main buttons are scrolled above viewport
+        setShowStickyBar(!entry.isIntersecting && entry.boundingClientRect.top < 0);
+      },
+      { threshold: 0 }
+    );
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, []);
 
   // Reviews State
   const [reviewsList, setReviewsList] = useState<any[]>(initialReviews);
@@ -323,6 +344,32 @@ export function ProductDetailView({
                   }`}
                 />
               </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  addToCompare({
+                    id: product.id,
+                    name: product.name,
+                    slug: product.slug,
+                    price: currentPrice,
+                    mrp: product.mrp,
+                    image: currentImage,
+                    category: product.category?.name,
+                    fit: selectedVariant?.fit,
+                    wash: selectedVariant?.wash,
+                  })
+                }
+                className={`w-8 h-8 rounded-full border border-border flex items-center justify-center shadow-sm transition-transform active:scale-90 cursor-pointer ${
+                  isCompared(product.id)
+                    ? 'bg-primary text-white border-primary'
+                    : 'bg-white/95 backdrop-blur-xs text-text hover:text-primary'
+                }`}
+                title={isCompared(product.id) ? 'Remove from Compare' : 'Add to Compare'}
+                aria-label="Compare Denim"
+              >
+                <Scale className={`w-4 h-4 ${isCompared(product.id) ? 'text-white' : 'text-slate-600'}`} />
+              </button>
             </div>
 
             {currentImage ? (
@@ -565,7 +612,7 @@ export function ProductDetailView({
           </div>
 
           {/* Actions: Add to Cart & Buy Now */}
-          <div className="space-y-3 pt-2">
+          <div ref={mainActionsRef} className="space-y-3 pt-2">
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
@@ -1095,6 +1142,55 @@ export function ProductDetailView({
           if (matching) setSelectedVariantId(matching.id);
         }}
       />
+
+      {/* Mobile Sticky Add to Bag Bar (Visible on mobile when user scrolls past main action buttons) */}
+      {showStickyBar && (
+        <div className="md:hidden fixed bottom-14 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-border shadow-xl px-4 py-2.5 animate-in slide-in-from-bottom duration-200">
+          <div className="flex items-center justify-between gap-2.5">
+            {/* Product Thumbnail & Price */}
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <div className="w-10 h-10 rounded-lg overflow-hidden border border-border bg-surface shrink-0">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={currentImage}
+                  alt={product.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-bold text-slate-900 truncate">{product.name}</div>
+                <div className="text-xs font-black text-primary font-mono">₹{currentPrice}</div>
+              </div>
+            </div>
+
+            {/* Waist Size Select */}
+            <div className="shrink-0">
+              <select
+                value={selectedVariantId}
+                onChange={(e) => setSelectedVariantId(e.target.value)}
+                className="h-9 px-2 rounded-xl border border-border bg-surface-alt text-xs font-bold text-slate-800 focus:outline-none focus:border-primary"
+              >
+                {variants.map((v) => (
+                  <option key={v.id} value={v.id} disabled={(v.stock_qty || 0) <= 0}>
+                    W{v.size} {(v.stock_qty || 0) <= 0 ? '(OOS)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Quick Add Button */}
+            <button
+              type="button"
+              onClick={handleAddToCart}
+              disabled={isOutOfStock}
+              className="h-9 px-3.5 rounded-xl bg-primary text-white text-xs font-bold uppercase tracking-wider hover:bg-primary-hover flex items-center gap-1.5 shrink-0 shadow-sm disabled:opacity-50 cursor-pointer"
+            >
+              <ShoppingBag className="w-3.5 h-3.5" />
+              <span>Add</span>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

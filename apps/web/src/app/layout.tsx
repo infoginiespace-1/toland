@@ -2,9 +2,12 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { CartProvider } from '@/context/cart-context';
 import { WishlistProvider } from '@/context/wishlist-context';
+import { CompareProvider } from '@/context/compare-context';
 import { StorefrontNavbar } from '@/components/storefront/navbar';
 import { StorefrontFooter } from '@/components/storefront/footer';
 import { RecentPurchaseToast } from '@/components/storefront/recent-purchase-toast';
+import { FloatingWhatsAppConcierge } from '@/components/storefront/floating-whatsapp-concierge';
+import { DenimCompareModal } from '@/components/storefront/denim-compare-modal';
 
 export const viewport: Viewport = {
   themeColor: '#14532D',
@@ -38,12 +41,16 @@ export default function RootLayout({
       <body className="min-h-screen bg-surface text-text flex flex-col">
         <CartProvider>
           <WishlistProvider>
-            <StorefrontNavbar />
-            <div className="flex-1 flex flex-col pb-16 md:pb-0">
-              {children}
-            </div>
-            <StorefrontFooter />
-            <RecentPurchaseToast />
+            <CompareProvider>
+              <StorefrontNavbar />
+              <div className="flex-1 flex flex-col pb-16 md:pb-0">
+                {children}
+              </div>
+              <StorefrontFooter />
+              <RecentPurchaseToast />
+              <FloatingWhatsAppConcierge />
+              <DenimCompareModal />
+            </CompareProvider>
           </WishlistProvider>
         </CartProvider>
       </body>

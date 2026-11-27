@@ -15,6 +15,8 @@ import {
   Loader2,
   AlertCircle,
   ExternalLink,
+  FileText,
+  RotateCcw,
 } from 'lucide-react';
 
 interface FoundOrder {
@@ -144,7 +146,7 @@ function TrackOrderContent() {
               required
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="e.g. 9876543210 or TLND-43892"
+              placeholder="e.g. 9876543210 or TLD-2026-12345"
               className="w-full pl-11 pr-4 py-3.5 rounded-xl border border-border bg-surface-alt text-sm focus:outline-none focus:border-primary text-text font-medium"
             />
           </div>
@@ -308,6 +310,37 @@ function TrackOrderContent() {
                     {(address.line2 || address.addressLine2) ? `, ${address.line2 || address.addressLine2}` : ''},{' '}
                     {address.city}, {address.state} - {address.pincode}
                   </span>
+                </div>
+
+                {/* Direct Order Actions */}
+                <div className="pt-3 border-t border-border flex flex-wrap items-center gap-2.5">
+                  <Link
+                    href={`/orders/${ord.order_no}/invoice`}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-alt border border-border text-xs font-bold text-text hover:border-primary hover:text-primary transition-colors cursor-pointer"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-primary" />
+                    <span>Download GST Invoice</span>
+                  </Link>
+
+                  <Link
+                    href={`/returns?order=${ord.order_no}`}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-alt border border-border text-xs font-bold text-text hover:border-accent hover:text-accent transition-colors cursor-pointer"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 text-accent" />
+                    <span>7-Day Return / Exchange</span>
+                  </Link>
+
+                  <a
+                    href={`https://wa.me/918797186001?text=${encodeURIComponent(
+                      `Hello TOLAND team, I need delivery updates regarding my order ${ord.order_no}.`
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition-colors cursor-pointer ml-auto"
+                  >
+                    <Phone className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>WhatsApp Courier Desk</span>
+                  </a>
                 </div>
               </div>
             );

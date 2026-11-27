@@ -15,6 +15,9 @@ import {
   Layers,
   Phone,
   Lock,
+  QrCode,
+  Copy,
+  Check,
 } from 'lucide-react';
 
 export default function CheckoutPage() {
@@ -30,9 +33,11 @@ export default function CheckoutPage() {
     city: '',
     state: 'Bihar',
     pincode: '',
-    paymentMethod: 'cod' as 'cod' | 'razorpay',
+    paymentMethod: 'cod' as 'cod' | 'razorpay' | 'upi',
   });
 
+  const [upiUtr, setUpiUtr] = useState('');
+  const [copiedUpi, setCopiedUpi] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -81,6 +86,14 @@ export default function CheckoutPage() {
       return;
     }
 
+    if (formData.paymentMethod === 'upi') {
+      const cleanUtr = upiUtr.trim();
+      if (!cleanUtr || cleanUtr.length < 6) {
+        setErrorMessage('Please enter your 12-digit UPI Reference / UTR Number from Google Pay, PhonePe, or Paytm.');
+        return;
+      }
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -94,6 +107,7 @@ export default function CheckoutPage() {
         state: formData.state,
         pincode: cleanPin,
         paymentMethod: formData.paymentMethod,
+        upiTransactionId: formData.paymentMethod === 'upi' ? upiUtr.trim() : undefined,
         couponCode: coupon?.code,
         items: items.map((i) => ({
           variantId: i.variantId,
@@ -334,6 +348,115 @@ export default function CheckoutPage() {
                   No Extra Charge
                 </span>
               </label>
+
+              {/* Direct Instant UPI QR */}
+              <div
+                className={`rounded-xl border transition-all overflow-hidden ${
+                  formData.paymentMethod === 'upi'
+                    ? 'bg-surface border-primary shadow-xs ring-1 ring-primary'
+                    : 'bg-surface/50 border-border hover:bg-surface'
+                }`}
+              >
+                <label className="p-4 flex items-center justify-between cursor-pointer">
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="upi"
+                      checked={formData.paymentMethod === 'upi'}
+                      onChange={() => setFormData({ ...formData, paymentMethod: 'upi' })}
+                      className="accent-primary w-4 h-4"
+                    />
+                    <div>
+                      <div className="text-xs font-bold text-text flex items-center gap-2">
+                        <QrCode className="w-4 h-4 text-emerald-600" />
+                        <span>Direct Instant UPI QR (GPay / PhonePe / Paytm)</span>
+                      </div>
+                      <div className="text-3xs text-muted mt-0.5">Scan dynamic QR, 0% gateway charges & direct dispatch.</div>
+                    </div>
+                  </div>
+                  <span className="text-2xs font-bold uppercase text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
+                    0% Extra Fees
+                  </span>
+                </label>
+
+                {/* Expanded UPI Details when selected */}
+                {formData.paymentMethod === 'upi' && (
+                  <div className="p-4 pt-0 border-t border-border/60 bg-emerald-50/40 space-y-4">
+                    <div className="flex flex-col sm:flex-row items-center gap-4 pt-3">
+                      {/* Dynamic QR Code */}
+                      <div className="p-2 bg-white rounded-2xl border border-border shadow-xs shrink-0 text-center">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(
+                            `upi://pay?pa=8797186001@ybl&pn=TOLAND%20Denim&am=${total}&cu=INR&tn=TOLAND%20Order`
+                          )}`}
+                          alt="TOLAND UPI QR Code"
+                          className="w-32 h-32 mx-auto"
+                        />
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mt-1">
+                          Amount: ₹{total}
+                        </span>
+                      </div>
+
+                      {/* Instructions & VPA */}
+                      <div className="space-y-2 text-xs flex-1">
+                        <div className="font-bold text-text">How to complete UPI payment:</div>
+                        <ol className="text-muted text-[11px] space-y-1 list-decimal list-inside">
+                          <li>Open Google Pay, PhonePe, Paytm, or BHIM.</li>
+                          <li>Scan the QR code or transfer to UPI ID below.</li>
+                          <li>Enter your 12-digit UTR / Transaction ID to confirm.</li>
+                        </ol>
+
+                        <div className="flex items-center gap-2 pt-1">
+                          <span className="font-mono font-bold text-xs bg-white px-2.5 py-1 rounded-lg border border-border">
+                            8797186001@ybl
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText('8797186001@ybl');
+                              setCopiedUpi(true);
+                              setTimeout(() => setCopiedUpi(false), 2000);
+                            }}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-surface border border-border text-xs font-semibold hover:bg-slate-100 transition-colors cursor-pointer"
+                          >
+                            {copiedUpi ? (
+                              <>
+                                <Check className="w-3 h-3 text-emerald-600" />
+                                <span className="text-emerald-700">Copied</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3 h-3 text-muted" />
+                                <span>Copy ID</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* UTR Reference Input */}
+                    <div className="space-y-1">
+                      <label className="block text-2xs font-bold uppercase tracking-wider text-text">
+                        12-Digit UPI Transaction / UTR Reference Number *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={upiUtr}
+                        onChange={(e) => setUpiUtr(e.target.value)}
+                        placeholder="e.g. 432109876543 (from payment receipt)"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-border text-xs font-mono text-text focus:outline-hidden focus:border-primary font-bold tracking-wider"
+                      />
+                      <p className="text-[10px] text-muted">
+                        Find the 12-digit UTR / Ref No. in your Google Pay / PhonePe / Paytm transaction history.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Online Payment via Razorpay */}
               <label

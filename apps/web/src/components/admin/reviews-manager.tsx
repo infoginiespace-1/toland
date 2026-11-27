@@ -16,6 +16,9 @@ import {
   MessageSquare,
   Sparkles,
   ExternalLink,
+  ZoomIn,
+  X,
+  Image as ImageIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -28,6 +31,7 @@ interface ReviewItem {
   rating: number;
   title?: string | null;
   comment: string;
+  image_url?: string | null;
   is_verified_buyer: boolean;
   is_featured: boolean;
   status: 'approved' | 'pending' | 'rejected';
@@ -50,6 +54,7 @@ export function ReviewsManager({ initialReviews }: ReviewsManagerProps) {
   const [filterStatus, setFilterStatus] = useState<'all' | 'approved' | 'pending' | 'rejected'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [zoomImageUrl, setZoomImageUrl] = useState<string | null>(null);
 
   // Setup Realtime Subscription on reviews table
   useEffect(() => {
@@ -316,6 +321,33 @@ export function ReviewsManager({ initialReviews }: ReviewsManagerProps) {
                       &ldquo;{r.comment}&rdquo;
                     </p>
 
+                    {/* Customer Fit Photo Inspection Thumbnail */}
+                    {r.image_url && (
+                      <div className="pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setZoomImageUrl(r.image_url || null)}
+                          className="inline-flex items-center gap-2.5 p-1.5 pr-3 rounded-xl border border-border bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer group text-left"
+                        >
+                          <div className="w-12 h-12 rounded-lg overflow-hidden border border-border bg-slate-200 shrink-0">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={r.image_url}
+                              alt="Customer Fit"
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                            />
+                          </div>
+                          <div>
+                            <div className="text-[11px] font-bold text-text flex items-center gap-1">
+                              <span>Customer Fit Photo</span>
+                              <ZoomIn className="w-3 h-3 text-primary" />
+                            </div>
+                            <div className="text-[10px] text-muted">Click to inspect full photo</div>
+                          </div>
+                        </button>
+                      </div>
+                    )}
+
                     {/* Product Associated */}
                     <div className="flex flex-wrap items-center gap-3 text-3xs text-muted pt-1">
                       {r.product ? (
@@ -406,6 +438,38 @@ export function ReviewsManager({ initialReviews }: ReviewsManagerProps) {
           </div>
         )}
       </div>
+
+      {/* Customer Fit Photo Fullscreen Zoom Modal */}
+      {zoomImageUrl && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setZoomImageUrl(null)}
+        >
+          <div
+            className="relative max-w-xl w-full bg-white rounded-3xl overflow-hidden shadow-2xl p-4 space-y-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-2 border-b border-border">
+              <span className="text-xs font-bold text-text">Customer Fit Photo Inspection</span>
+              <button
+                type="button"
+                onClick={() => setZoomImageUrl(null)}
+                className="p-1 rounded-lg text-muted hover:text-text cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="rounded-2xl overflow-hidden border border-border bg-slate-50 max-h-[70vh] flex items-center justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={zoomImageUrl}
+                alt="Zoomed Customer Fit"
+                className="w-full h-full object-contain"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -11,7 +11,8 @@ const placeOrderSchema = z.object({
   city: z.string().min(2, 'City is required'),
   state: z.string().min(2, 'State is required'),
   pincode: z.string().regex(/^[1-9][0-9]{5}$/, 'Valid 6-digit Indian PIN code required'),
-  paymentMethod: z.enum(['cod', 'razorpay']),
+  paymentMethod: z.enum(['cod', 'razorpay', 'upi']),
+  upiTransactionId: z.string().optional(),
   items: z.array(
     z.object({
       variantId: z.string().uuid(),
@@ -47,6 +48,7 @@ export async function POST(request: Request) {
       state,
       pincode,
       paymentMethod,
+      upiTransactionId,
       items,
       couponCode,
     } = parsed.data;
@@ -101,7 +103,7 @@ export async function POST(request: Request) {
         order_no: orderNo,
         status: 'confirmed',
         payment_method: paymentMethod,
-        payment_status: paymentMethod === 'cod' ? 'pending' : 'paid',
+        payment_status: paymentMethod === 'cod' || paymentMethod === 'upi' ? 'pending' : 'paid',
         subtotal,
         discount,
         shipping,
@@ -135,13 +137,21 @@ export async function POST(request: Request) {
     await supabase.from('order_status_history').insert({
       order_id: createdOrderId,
       status: 'confirmed',
-      note: `Order placed via Storefront (${paymentMethod.toUpperCase()})`,
+      note: paymentMethod === 'upi'
+        ? `Order placed via Storefront (Direct UPI QR - UTR: ${upiTransactionId || 'Awaiting'})`
+        : `Order placed via Storefront (${paymentMethod.toUpperCase()})`,
     } as any);
 
     // 6. Queue WhatsApp Order Confirmation Message (Priority 2)
+    const paymentLabel = paymentMethod === 'cod'
+      ? 'Cash on Delivery'
+      : paymentMethod === 'upi'
+      ? `Instant UPI (UTR: ${upiTransactionId || 'Submitted'})`
+      : 'Prepaid';
+
     const waBody = `Namaste ${customerName}!\n\nYour TOLAND order *${createdOrderNo}* has been confirmed.\n\n` +
       `Items: ${items.map((i) => `${i.name} (Size: ${i.size}) x${i.qty}`).join(', ')}\n` +
-      `Total: ₹${total} (${paymentMethod === 'cod' ? 'Cash on Delivery' : 'Prepaid'})\n\n` +
+      `Total: ₹${total} (${paymentLabel})\n\n` +
       `Delivery Address: ${addressLine1}, ${city}, ${state} - ${pincode}\n\n` +
       `Your jeans will be packed and dispatched directly from our Sheikhpura factory. Track updates anytime here:\nhttps://toland-web.vercel.app/track-order?q=${createdOrderNo}`;
 
