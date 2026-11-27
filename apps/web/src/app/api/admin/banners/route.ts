@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title, image_path, link = '/products', sort = 0, is_active = true } = body;
+    const { title, subtitle, image_path, media_type = 'image', link = '/products', sort = 0, is_active = true } = body;
 
     if (!title || !image_path) {
       return NextResponse.json({ error: 'Title and image are required' }, { status: 400 });
@@ -50,7 +50,9 @@ export async function POST(request: NextRequest) {
       .from('banners') as any)
       .insert({
         title,
+        subtitle: subtitle || null,
         image_path,
+        media_type: media_type || 'image',
         link: link || '/products',
         sort: Number(sort),
         is_active: Boolean(is_active),
@@ -79,7 +81,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { id, title, image_path, link = '/products', sort = 0, is_active = true } = body;
+    const { id, title, subtitle, image_path, media_type = 'image', link = '/products', sort = 0, is_active = true } = body;
 
     if (!id || !title || !image_path) {
       return NextResponse.json({ error: 'Banner ID, title, and image are required' }, { status: 400 });
@@ -89,7 +91,9 @@ export async function PUT(request: NextRequest) {
       .from('banners') as any)
       .update({
         title,
+        subtitle: subtitle || null,
         image_path,
+        media_type: media_type || 'image',
         link: link || '/products',
         sort: Number(sort),
         is_active: Boolean(is_active),

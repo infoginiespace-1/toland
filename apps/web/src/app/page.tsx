@@ -1,6 +1,8 @@
 import React from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import { HeroSlider } from '@/components/storefront/hero-slider';
+import { TestimonialsSection } from '@/components/storefront/testimonials-section';
 import {
   ArrowRight,
   ShieldCheck,
@@ -19,8 +21,8 @@ export const revalidate = 60;
 export default async function HomePage() {
   const supabase = createClient();
 
-  // Fetch active categories and featured products in parallel
-  const [categoriesRes, productsRes] = await Promise.all([
+  // Fetch active categories, featured products, banners, and verified reviews in parallel
+  const [categoriesRes, productsRes, bannersRes, reviewsRes] = await Promise.all([
     supabase
       .from('categories')
       .select('*')
@@ -37,10 +39,24 @@ export default async function HomePage() {
       .eq('is_active', true)
       .eq('is_featured', true)
       .limit(8),
+    supabase
+      .from('banners')
+      .select('*')
+      .eq('is_active', true)
+      .order('sort', { ascending: true }),
+    supabase
+      .from('reviews')
+      .select('*')
+      .eq('status', 'approved')
+      .order('is_featured', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(8),
   ]);
 
-  const categories = categoriesRes.data;
-  const products = productsRes.data;
+  const categories = categoriesRes.data || [];
+  const products = productsRes.data || [];
+  const banners = (bannersRes.data || []) as any[];
+  const reviews = (reviewsRes.data || []) as any[];
 
   return (
     <div className="space-y-16 pb-20">
@@ -101,25 +117,9 @@ export default async function HomePage() {
               </div>
             </div>
 
-            {/* Right Hero Visual Showcase */}
+            {/* Right Hero Visual Showcase - Interactive Multi-Media Carousel */}
             <div className="lg:col-span-5 relative">
-              <div className="relative aspect-4/5 rounded-2xl overflow-hidden border border-border shadow-card bg-surface-alt group">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?auto=format&fit=crop&w=1200&q=80"
-                  alt="TOLAND Sheikhpura Denim Manufacturing"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-6 text-white">
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/95 text-slate-900 font-mono text-[10px] font-bold uppercase tracking-wider w-fit mb-2 shadow-xs">
-                    Khetalpura 811101
-                  </div>
-                  <h3 className="text-xl font-bold">Authentic Indian Craftsmanship</h3>
-                  <p className="text-xs text-white/80 mt-1">
-                    Every pair undergoes 14 distinct quality inspections before dispatch.
-                  </p>
-                </div>
-              </div>
+              <HeroSlider banners={banners} />
             </div>
           </div>
         </div>
@@ -336,7 +336,10 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* 5. B2B WHOLESALE BANNER */}
+      {/* 5. VERIFIED CUSTOMER RATINGS & REVIEWS */}
+      <TestimonialsSection reviews={reviews} />
+
+      {/* 6. B2B WHOLESALE BANNER */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="rounded-3xl bg-gradient-to-r from-primary to-primary-hover p-8 sm:p-12 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-8">
           <div className="max-w-xl space-y-3">

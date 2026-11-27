@@ -63,9 +63,8 @@ export function StorefrontFooter() {
           {/* Brand Info */}
           <div className="lg:col-span-2 space-y-4">
             <Link href="/" className="inline-block">
-              <span className="text-2xl font-extrabold tracking-tight text-text flex items-center gap-1">
+              <span className="text-2xl font-extrabold tracking-tight text-text flex items-center">
                 TOLAND
-                <span className="w-2 h-2 rounded-full bg-accent inline-block"></span>
               </span>
               <span className="text-[10px] uppercase tracking-widest font-semibold text-muted block mt-0.5">
                 Toland Private Limited

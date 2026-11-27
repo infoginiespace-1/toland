@@ -29,6 +29,7 @@ import {
   Radio,
   Bot,
   Sliders,
+  Star,
 } from 'lucide-react';
 
 interface AdminSidebarProps {
@@ -48,6 +49,7 @@ export function AdminSidebar({ userPhone = 'Admin', userRole = 'admin' }: AdminS
         { label: 'Products', href: '/admin/products', icon: Package },
         { label: 'Categories', href: '/admin/categories', icon: Layers },
         { label: 'Banners', href: '/admin/banners', icon: ImageIcon },
+        { label: 'Customer Reviews', href: '/admin/reviews', icon: Star },
         { label: 'Coupons', href: '/admin/coupons', icon: Tag },
         { label: 'Orders & Shipments', href: '/admin/orders', icon: ShoppingBag },
       ],

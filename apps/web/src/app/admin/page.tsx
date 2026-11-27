@@ -16,6 +16,7 @@ import {
   Tag,
   Layers,
   Sparkles,
+  Star,
 } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -29,6 +30,7 @@ export default async function AdminDashboardPage() {
     { count: ordersCount },
     { count: leadsCount },
     { count: waMessagesCount },
+    reviewsRes,
     { data: recentOrdersData },
     { data: recentMessagesData },
     { data: waSessionData },
@@ -38,6 +40,7 @@ export default async function AdminDashboardPage() {
     supabase.from('orders').select('*', { count: 'exact', head: true }),
     supabase.from('leads').select('*', { count: 'exact', head: true }),
     supabase.from('wa_messages').select('*', { count: 'exact', head: true }),
+    supabase.from('reviews').select('rating, status', { count: 'exact' }),
     supabase
       .from('orders')
       .select('id, order_no, total, status, payment_method, address_snapshot, created_at')
@@ -68,6 +71,13 @@ export default async function AdminDashboardPage() {
 
   const isWaConnected = waSession?.status === 'connected';
 
+  const allReviews = (reviewsRes?.data || []) as any[];
+  const reviewsCount = reviewsRes?.count || allReviews.length || 0;
+  const avgStoreRating =
+    allReviews.length > 0
+      ? (allReviews.reduce((sum, r) => sum + (r.rating || 5), 0) / allReviews.length).toFixed(1)
+      : '5.0';
+
   return (
     <div className="space-y-6 pb-12">
       {/* Header Banner */}
@@ -97,8 +107,8 @@ export default async function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* 4 Main KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* 5 Main KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Gross Revenue */}
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-card space-y-2">
           <div className="flex items-center justify-between">
@@ -153,6 +163,26 @@ export default async function AdminDashboardPage() {
           </Link>
         </div>
 
+        {/* Customer Reviews & Store Rating */}
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-card space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+              Customer Rating
+            </span>
+            <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center">
+              <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+            </div>
+          </div>
+          <div className="text-2xl font-bold text-amber-600 flex items-center gap-1">
+            <span>{avgStoreRating}</span>
+            <span className="text-xs text-muted font-normal">({reviewsCount} revs)</span>
+          </div>
+          <Link href="/admin/reviews" className="text-xs text-primary font-semibold hover:underline flex items-center gap-1">
+            <span>Moderate Reviews</span>
+            <ArrowRight className="w-3 h-3" />
+          </Link>
+        </div>
+
         {/* WhatsApp Status */}
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-card space-y-2">
           <div className="flex items-center justify-between">
@@ -166,7 +196,7 @@ export default async function AdminDashboardPage() {
           <div className="text-xl font-bold flex items-center gap-2">
             {isWaConnected ? (
               <span className="text-emerald-700 flex items-center gap-1.5 text-sm font-semibold">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
                 Live +{waSession?.connected_phone?.slice(-4)}
               </span>
             ) : (
@@ -234,6 +264,22 @@ export default async function AdminDashboardPage() {
           <div>
             <span className="font-bold text-xs text-text block">Hero Banners</span>
             <span className="text-3xs text-muted">Update home slider</span>
+          </div>
+        </Link>
+
+        <Link
+          href="/admin/reviews"
+          className="p-4 rounded-2xl bg-white border border-[#CFE0D5] hover:border-primary hover:shadow-md transition-all flex items-center gap-3 group col-span-2 sm:col-span-4"
+        >
+          <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:bg-amber-500 group-hover:text-white transition-colors">
+            <Star className="w-5 h-5 fill-current" />
+          </div>
+          <div className="flex-1 flex items-center justify-between">
+            <div>
+              <span className="font-bold text-xs text-text block">Customer Reviews & Ratings Moderation</span>
+              <span className="text-3xs text-muted">Moderate customer feedback, approve verified buyer reviews & feature testimonials</span>
+            </div>
+            <ArrowRight className="w-4 h-4 text-muted group-hover:text-text transition-colors" />
           </div>
         </Link>
       </div>

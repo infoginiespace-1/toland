@@ -42,16 +42,25 @@ export async function generateMetadata({
 export default async function ProductDetailPage({ params }: ProductDetailPageProps) {
   const supabase = createClient();
 
-  const { data: product } = (await supabase
-    .from('products')
-    .select(`
-      *,
-      category:categories(name, slug),
-      variants:product_variants(*),
-      images:product_images(path, sort)
-    `)
-    .eq('slug', params.slug)
-    .single()) as any;
+  const [productRes, reviewsRes] = await Promise.all([
+    supabase
+      .from('products')
+      .select(`
+        *,
+        category:categories(name, slug),
+        variants:product_variants(*),
+        images:product_images(path, sort, media_type)
+      `)
+      .eq('slug', params.slug)
+      .single(),
+    supabase
+      .from('reviews')
+      .select('*')
+      .eq('status', 'approved')
+      .order('created_at', { ascending: false }),
+  ]);
+
+  const product = productRes.data as any;
 
   if (!product) {
     notFound();
@@ -59,6 +68,12 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
 
   const variants = product.variants || [];
   const images = (product.images || []).sort((a: any, b: any) => (a.sort || 0) - (b.sort || 0));
+  const allApprovedReviews = (reviewsRes.data || []) as any[];
+
+  // Prioritize product-specific reviews, then include verified brand reviews
+  const productReviews = allApprovedReviews.filter(
+    (r) => r.product_id === product.id || !r.product_id
+  );
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -87,7 +102,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
       </nav>
 
       {/* Product Detail View */}
-      <ProductDetailView product={product} variants={variants} images={images} />
+      <ProductDetailView product={product} variants={variants} images={images} reviews={productReviews} />
     </div>
   );
 }

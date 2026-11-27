@@ -17,15 +17,27 @@ import {
   ChevronRight,
   X,
   Share2,
+  Star,
+  Play,
+  MessageSquare,
+  Sparkles,
+  Loader2,
+  Quote,
 } from 'lucide-react';
 
 interface ProductDetailViewProps {
   product: any;
   variants: any[];
   images?: any[];
+  reviews?: any[];
 }
 
-export function ProductDetailView({ product, variants, images = [] }: ProductDetailViewProps) {
+export function ProductDetailView({
+  product,
+  variants,
+  images = [],
+  reviews: initialReviews = [],
+}: ProductDetailViewProps) {
   const router = useRouter();
   const { addToCart } = useCart();
 
@@ -37,6 +49,21 @@ export function ProductDetailView({ product, variants, images = [] }: ProductDet
   const [sizeChartOpen, setSizeChartOpen] = useState(false);
   const [addedToast, setAddedToast] = useState(false);
 
+  // Reviews State
+  const [reviewsList, setReviewsList] = useState<any[]>(initialReviews);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [reviewSuccess, setReviewSuccess] = useState(false);
+
+  // Review Form Fields
+  const [reviewRating, setReviewRating] = useState(5);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [reviewName, setReviewName] = useState('');
+  const [reviewEmail, setReviewEmail] = useState('');
+  const [reviewTitle, setReviewTitle] = useState('');
+  const [reviewComment, setReviewComment] = useState('');
+  const [reviewError, setReviewError] = useState<string | null>(null);
+
   const selectedVariant = variants.find((v) => v.id === selectedVariantId) || variants[0];
   const discountPercent = product.mrp
     ? Math.round(((product.mrp - (selectedVariant?.price || product.base_price)) / product.mrp) * 100)
@@ -44,7 +71,21 @@ export function ProductDetailView({ product, variants, images = [] }: ProductDet
 
   const currentPrice = selectedVariant?.price || product.base_price;
   const isOutOfStock = (selectedVariant?.stock_qty || 0) <= 0;
-  const currentImage = images[activeImageIndex]?.path || images[0]?.path || '';
+  const currentImgObj = images[activeImageIndex] || images[0];
+  const currentImage = currentImgObj?.path || '';
+
+  const isVideoUrl = (path: string, mediaType?: string) => {
+    if (mediaType === 'video') return true;
+    const lower = (path || '').toLowerCase();
+    return (
+      lower.endsWith('.mp4') ||
+      lower.endsWith('.webm') ||
+      lower.endsWith('.mov') ||
+      lower.includes('/video/')
+    );
+  };
+
+  const isCurrentVideo = isVideoUrl(currentImage, currentImgObj?.media_type);
 
   const handleAddToCart = () => {
     if (!selectedVariant) return;
@@ -80,6 +121,64 @@ export function ProductDetailView({ product, variants, images = [] }: ProductDet
     `Hello TOLAND team, I would like to inquire about ${product.name} (SKU: ${selectedVariant?.sku || 'general'}, Size: ${selectedVariant?.size || 'any'}).`
   )}`;
 
+  // Submit Review Handler
+  const handleReviewSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reviewName.trim() || !reviewComment.trim()) {
+      setReviewError('Please enter your name and review feedback.');
+      return;
+    }
+
+    try {
+      setSubmittingReview(true);
+      setReviewError(null);
+
+      const res = await fetch('/api/reviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          product_id: product.id,
+          customer_name: reviewName,
+          customer_email: reviewEmail,
+          rating: reviewRating,
+          title: reviewTitle,
+          comment: reviewComment,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to submit review');
+
+      if (data.review) {
+        setReviewsList((prev) => [data.review, ...prev]);
+      }
+
+      setReviewSuccess(true);
+      setTimeout(() => {
+        setReviewSuccess(false);
+        setReviewModalOpen(false);
+        setReviewName('');
+        setReviewEmail('');
+        setReviewTitle('');
+        setReviewComment('');
+      }, 2000);
+    } catch (err: any) {
+      setReviewError(err?.message || 'Server error. Please try again.');
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
+
+  // Review Summary Metrics
+  const totalReviewsCount = reviewsList.length;
+  const avgScore =
+    totalReviewsCount > 0
+      ? (
+          reviewsList.reduce((acc, r) => acc + (r.rating || 5), 0) /
+          totalReviewsCount
+        ).toFixed(1)
+      : '5.0';
+
   return (
     <div className="space-y-12">
       {/* Toast Notification */}
@@ -88,7 +187,9 @@ export function ProductDetailView({ product, variants, images = [] }: ProductDet
           <CheckCircle2 className="w-5 h-5 text-accent" />
           <div>
             <div className="text-xs font-bold">Added to Your Cart!</div>
-            <div className="text-2xs text-white/80">{product.name} (Size {selectedVariant?.size})</div>
+            <div className="text-2xs text-white/80">
+              {product.name} (Size {selectedVariant?.size})
+            </div>
           </div>
           <Link
             href="/cart"
@@ -103,7 +204,7 @@ export function ProductDetailView({ product, variants, images = [] }: ProductDet
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
         {/* Left: Product Imagery / Visual Showcase */}
         <div className="space-y-4">
-          {/* Main Visual Display */}
+          {/* Main Visual Display (Supports High-Res Images, GIFs, & Autoplay Videos) */}
           <div className="relative aspect-4/5 rounded-3xl bg-surface border border-border shadow-md overflow-hidden group">
             {discountPercent > 0 && (
               <span className="absolute top-4 left-4 z-10 px-3 py-1 rounded-full text-xs font-extrabold uppercase bg-danger text-white shadow-sm">
@@ -116,12 +217,24 @@ export function ProductDetailView({ product, variants, images = [] }: ProductDet
             </span>
 
             {currentImage ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={currentImage}
-                alt={product.name}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-              />
+              isCurrentVideo ? (
+                <video
+                  src={currentImage}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  controls
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={currentImage}
+                  alt={product.name}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+              )
             ) : (
               <div className="w-full h-full p-8 flex flex-col items-center justify-center text-center bg-gradient-to-br from-surface to-surface-alt">
                 <div className="w-32 h-32 rounded-3xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary mb-4 shadow-inner">
@@ -138,6 +251,9 @@ export function ProductDetailView({ product, variants, images = [] }: ProductDet
             <div className="grid grid-cols-4 gap-3">
               {images.map((img: any, idx: number) => {
                 const isActive = idx === activeImageIndex;
+                const isThumbVideo = isVideoUrl(img.path, img.media_type);
+                const isThumbGif = (img.path || '').toLowerCase().endsWith('.gif');
+
                 return (
                   <button
                     key={img.id || idx}
@@ -155,6 +271,22 @@ export function ProductDetailView({ product, variants, images = [] }: ProductDet
                       alt={`${product.name} angle ${idx + 1}`}
                       className="w-full h-full object-cover"
                     />
+
+                    {/* Video Demo Badge Overlay */}
+                    {isThumbVideo && (
+                      <div className="absolute inset-0 bg-black/35 flex items-center justify-center">
+                        <div className="w-7 h-7 rounded-full bg-white/95 text-primary flex items-center justify-center shadow-md">
+                          <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* GIF Tag */}
+                    {isThumbGif && (
+                      <div className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-purple-700 text-white text-[9px] font-bold uppercase tracking-wider">
+                        GIF
+                      </div>
+                    )}
                   </button>
                 );
               })}
@@ -194,7 +326,23 @@ export function ProductDetailView({ product, variants, images = [] }: ProductDet
               {product.name}
             </h1>
 
-            <p className="text-xs sm:text-sm text-muted leading-relaxed">
+            {/* Star Rating Badge - Click to Scroll to Reviews */}
+            <a
+              href="#customer-reviews"
+              className="inline-flex items-center gap-2 text-xs font-semibold hover:opacity-80 transition-opacity"
+            >
+              <div className="flex items-center gap-0.5 text-amber-500">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                ))}
+              </div>
+              <span className="font-bold text-text">{avgScore}</span>
+              <span className="text-muted">
+                ({totalReviewsCount} Verified {totalReviewsCount === 1 ? 'Review' : 'Reviews'})
+              </span>
+            </a>
+
+            <p className="text-xs sm:text-sm text-muted leading-relaxed pt-1">
               {product.description}
             </p>
           </div>
@@ -218,33 +366,36 @@ export function ProductDetailView({ product, variants, images = [] }: ProductDet
           {/* Size Selector & Size Chart Trigger */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-text">Select Waist Size</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-text">
+                Select Waist Size:
+              </span>
               <button
                 type="button"
                 onClick={() => setSizeChartOpen(true)}
-                className="text-xs font-bold text-primary hover:text-accent flex items-center gap-1 transition-colors underline"
+                className="text-xs text-primary font-bold hover:underline flex items-center gap-1 cursor-pointer"
               >
                 <Ruler className="w-3.5 h-3.5" />
-                <span>Size Chart & Measurements</span>
+                <span>Size Guide & Measurements</span>
               </button>
             </div>
 
-            <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+            <div className="flex flex-wrap gap-2">
               {variants.map((v) => {
                 const isSelected = v.id === selectedVariantId;
-                const isAvailable = (v.stock_qty || 0) > 0;
+                const isVariantOos = (v.stock_qty || 0) <= 0;
 
                 return (
                   <button
                     key={v.id}
                     type="button"
                     onClick={() => setSelectedVariantId(v.id)}
-                    className={`py-3 rounded-xl text-center font-mono font-bold text-sm transition-all border ${
+                    disabled={isVariantOos}
+                    className={`min-w-[48px] h-11 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                       isSelected
-                        ? 'bg-primary text-white border-primary shadow-sm scale-102'
-                        : isAvailable
-                        ? 'bg-surface-alt border-border text-text hover:border-primary/50'
-                        : 'bg-surface border-border/40 text-muted/40 cursor-not-allowed line-through'
+                        ? 'border-primary bg-primary text-white shadow-sm'
+                        : isVariantOos
+                        ? 'border-border bg-surface-alt text-muted/40 cursor-not-allowed line-through'
+                        : 'border-border bg-white text-text hover:border-primary/50'
                     }`}
                   >
                     {v.size}
@@ -252,51 +403,40 @@ export function ProductDetailView({ product, variants, images = [] }: ProductDet
                 );
               })}
             </div>
+          </div>
 
-            {/* Live Stock Indicator */}
-            <div className="text-xs font-semibold flex items-center gap-2 pt-1">
-              <span className="w-2 h-2 rounded-full bg-success"></span>
-              <span className="text-text">
-                {selectedVariant?.stock_qty > 10
-                  ? `In Stock (${selectedVariant.stock_qty} pieces ready at Sheikhpura warehouse)`
-                  : selectedVariant?.stock_qty > 0
-                  ? `Only ${selectedVariant.stock_qty} pieces remaining in stock`
-                  : 'Out of Stock for this size'}
-              </span>
+          {/* Quantity Selector */}
+          <div className="flex items-center gap-4">
+            <span className="text-xs font-bold uppercase tracking-wider text-text">Quantity:</span>
+            <div className="flex items-center border border-border rounded-xl bg-surface-alt p-1">
+              <button
+                type="button"
+                onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-text hover:bg-white transition-colors cursor-pointer"
+              >
+                -
+              </button>
+              <span className="w-10 text-center text-xs font-bold font-mono">{quantity}</span>
+              <button
+                type="button"
+                onClick={() => setQuantity(quantity + 1)}
+                className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-text hover:bg-white transition-colors cursor-pointer"
+              >
+                +
+              </button>
             </div>
           </div>
 
-          {/* Quantity Stepper & Buy Actions */}
-          <div className="space-y-4 pt-2">
-            <div className="flex items-center gap-4">
-              <span className="text-xs font-bold uppercase tracking-wider text-muted">Quantity:</span>
-              <div className="flex items-center border border-border rounded-lg bg-surface">
-                <button
-                  type="button"
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="px-3 py-1.5 text-text hover:bg-surface-alt font-bold"
-                >
-                  -
-                </button>
-                <span className="px-4 py-1.5 text-xs font-bold font-mono">{quantity}</span>
-                <button
-                  type="button"
-                  onClick={() => setQuantity(Math.min(selectedVariant?.stock_qty || 10, quantity + 1))}
-                  className="px-3 py-1.5 text-text hover:bg-surface-alt font-bold"
-                >
-                  +
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Actions: Add to Cart & Buy Now */}
+          <div className="space-y-3 pt-2">
+            <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
                 onClick={handleAddToCart}
                 disabled={isOutOfStock}
-                className="w-full py-4 rounded-xl bg-surface border-2 border-primary text-primary hover:bg-surface-alt text-sm font-black uppercase tracking-wide transition-all shadow-xs flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full py-3.5 px-4 rounded-xl border border-border bg-white text-text text-xs font-bold uppercase tracking-wider hover:bg-surface-alt transition-colors shadow-subtle flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
-                <ShoppingBag className="w-4 h-4" />
+                <ShoppingBag className="w-4 h-4 text-primary" />
                 <span>Add to Cart</span>
               </button>
 
@@ -304,29 +444,29 @@ export function ProductDetailView({ product, variants, images = [] }: ProductDet
                 type="button"
                 onClick={handleBuyNow}
                 disabled={isOutOfStock}
-                className="w-full py-4 rounded-xl bg-primary text-white hover:bg-primary-hover text-sm font-black uppercase tracking-wide transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full py-3.5 px-4 rounded-xl bg-primary text-white text-xs font-bold uppercase tracking-wider hover:bg-primary-hover transition-colors shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
-                <Zap className="w-4 h-4 text-accent" />
-                <span>Buy Now (Express)</span>
+                <Zap className="w-4 h-4" />
+                <span>Buy It Now</span>
               </button>
             </div>
 
-            {/* Direct WhatsApp Inquiry */}
+            {/* WhatsApp Inquiry Button */}
             <a
               href={waInquiryUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full py-3 rounded-xl bg-surface-alt border border-border text-text hover:border-success/50 text-xs font-bold transition-colors flex items-center justify-center gap-2"
+              className="w-full py-3 px-4 rounded-xl border border-success/30 bg-success/10 text-success text-xs font-bold transition-colors flex items-center justify-center gap-2 hover:bg-success/20"
             >
-              <Phone className="w-4 h-4 text-success" />
-              <span>Have a question? Inquire via WhatsApp</span>
+              <Phone className="w-4 h-4" />
+              <span>Inquire via WhatsApp Desk</span>
             </a>
           </div>
 
-          {/* Technical Specifications Table */}
-          <div className="pt-6 border-t border-border space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-muted">
-              Manufacturing Details
+          {/* Manufacturing Specifications */}
+          <div className="space-y-3 pt-4 border-t border-border">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-text">
+              Direct-From-Mill Specifications
             </h3>
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="p-3 bg-surface-alt rounded-lg border border-border">
@@ -350,6 +490,246 @@ export function ProductDetailView({ product, variants, images = [] }: ProductDet
         </div>
       </div>
 
+      {/* CUSTOMER REVIEWS & RATINGS SECTION */}
+      <section id="customer-reviews" className="pt-10 border-t border-border space-y-8 scroll-mt-20">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+          <div>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 mb-2">
+              <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Verified Customer Feedback</span>
+            </div>
+            <h2 className="text-2xl font-extrabold text-text tracking-tight">
+              Customer Reviews ({totalReviewsCount})
+            </h2>
+            <p className="text-xs text-muted mt-1">
+              Genuine feedback from customers wearing authentic TOLAND denim.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setReviewModalOpen(true)}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-white text-xs font-bold uppercase tracking-wider hover:bg-primary-hover shadow-sm transition-all cursor-pointer shrink-0"
+          >
+            <Star className="w-4 h-4 fill-white" />
+            <span>Write a Review</span>
+          </button>
+        </div>
+
+        {/* Reviews List */}
+        {reviewsList.length === 0 ? (
+          <div className="p-10 rounded-2xl border border-dashed border-border bg-surface-alt text-center space-y-3">
+            <MessageSquare className="w-8 h-8 mx-auto text-muted" />
+            <h3 className="text-sm font-bold text-text">Be the first to review this denim</h3>
+            <p className="text-xs text-muted max-w-sm mx-auto">
+              Share your fit, wash, and comfort experience with fellow denim enthusiasts.
+            </p>
+            <button
+              type="button"
+              onClick={() => setReviewModalOpen(true)}
+              className="px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold cursor-pointer"
+            >
+              Write First Review
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {reviewsList.map((rev) => (
+              <div
+                key={rev.id}
+                className="p-5 rounded-2xl bg-white border border-border shadow-card flex flex-col justify-between space-y-3"
+              >
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-0.5 text-amber-400">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={i}
+                          className={`w-3.5 h-3.5 ${
+                            i < (rev.rating || 5)
+                              ? 'fill-amber-400 text-amber-400'
+                              : 'text-slate-200'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    {rev.is_verified_buyer !== false && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                        <span>Verified</span>
+                      </span>
+                    )}
+                  </div>
+
+                  {rev.title && (
+                    <h4 className="text-xs font-bold text-text leading-snug">{rev.title}</h4>
+                  )}
+
+                  <p className="text-xs text-muted leading-relaxed">
+                    &ldquo;{rev.comment}&rdquo;
+                  </p>
+                </div>
+
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-3xs text-muted">
+                  <span className="font-bold text-text">{rev.customer_name}</span>
+                  <span>
+                    {rev.created_at
+                      ? new Date(rev.created_at).toLocaleDateString('en-IN', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                        })
+                      : 'Verified Buyer'}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* WRITE A REVIEW MODAL */}
+      {reviewModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white border border-border rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5 relative max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-border">
+              <div>
+                <h3 className="text-base font-bold text-text">Rate & Review Your Experience</h3>
+                <p className="text-xs text-muted">{product.name}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReviewModalOpen(false)}
+                className="p-1 rounded-lg text-muted hover:text-text cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {reviewSuccess ? (
+              <div className="p-8 text-center space-y-3">
+                <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto animate-bounce" />
+                <h4 className="text-base font-bold text-text">Review Submitted Successfully!</h4>
+                <p className="text-xs text-muted">
+                  Thank you for your valuable feedback. Your review is now live on TOLAND.
+                </p>
+              </div>
+            ) : (
+              <form onSubmit={handleReviewSubmit} className="space-y-4 text-xs">
+                {/* Star Picker */}
+                <div>
+                  <label className="block font-bold text-text mb-1 uppercase tracking-wider">
+                    Overall Rating *
+                  </label>
+                  <div className="flex items-center gap-1.5 pt-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setReviewRating(star)}
+                        onMouseEnter={() => setHoverRating(star)}
+                        onMouseLeave={() => setHoverRating(0)}
+                        className="p-1 text-amber-400 hover:scale-115 transition-transform cursor-pointer"
+                      >
+                        <Star
+                          className={`w-7 h-7 ${
+                            star <= (hoverRating || reviewRating)
+                              ? 'fill-amber-400 text-amber-400'
+                              : 'text-slate-200'
+                          }`}
+                        />
+                      </button>
+                    ))}
+                    <span className="ml-2 font-bold text-text text-sm">
+                      {hoverRating || reviewRating} / 5 Stars
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-text mb-1 uppercase tracking-wider">
+                      Your Full Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={reviewName}
+                      onChange={(e) => setReviewName(e.target.value)}
+                      placeholder="e.g. Ramesh Kumar"
+                      className="w-full px-3 py-2 rounded-xl border border-border bg-surface-alt text-xs focus:outline-none focus:border-primary font-medium"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-text mb-1 uppercase tracking-wider">
+                      Email or Mobile (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={reviewEmail}
+                      onChange={(e) => setReviewEmail(e.target.value)}
+                      placeholder="e.g. ramesh@gmail.com"
+                      className="w-full px-3 py-2 rounded-xl border border-border bg-surface-alt text-xs focus:outline-none focus:border-primary"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-text mb-1 uppercase tracking-wider">
+                    Review Headline / Title (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={reviewTitle}
+                    onChange={(e) => setReviewTitle(e.target.value)}
+                    placeholder="e.g. Authentic denim weight, fits true to waist"
+                    className="w-full px-3 py-2 rounded-xl border border-border bg-surface-alt text-xs focus:outline-none focus:border-primary"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-text mb-1 uppercase tracking-wider">
+                    Your Review & Experience *
+                  </label>
+                  <textarea
+                    required
+                    rows={4}
+                    value={reviewComment}
+                    onChange={(e) => setReviewComment(e.target.value)}
+                    placeholder="Tell us about the fabric feel, stitching quality, stone-washing fade, and overall fit..."
+                    className="w-full px-3 py-2 rounded-xl border border-border bg-surface-alt text-xs focus:outline-none focus:border-primary leading-relaxed"
+                  />
+                </div>
+
+                {reviewError && (
+                  <p className="text-xs text-danger font-semibold">{reviewError}</p>
+                )}
+
+                <div className="flex items-center justify-end gap-3 pt-3 border-t border-border">
+                  <button
+                    type="button"
+                    onClick={() => setReviewModalOpen(false)}
+                    disabled={submittingReview}
+                    className="px-4 py-2 rounded-xl border border-border font-bold text-muted hover:text-text hover:bg-surface-alt cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submittingReview}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-white font-bold uppercase tracking-wider hover:bg-primary-hover shadow-sm disabled:opacity-50 cursor-pointer"
+                  >
+                    {submittingReview && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                    <span>Submit Verified Review</span>
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* SIZE CHART MODAL */}
       {sizeChartOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
@@ -361,7 +741,7 @@ export function ProductDetailView({ product, variants, images = [] }: ProductDet
               </div>
               <button
                 onClick={() => setSizeChartOpen(false)}
-                className="p-2 rounded-lg text-muted hover:text-text hover:bg-surface"
+                className="p-2 rounded-lg text-muted hover:text-text hover:bg-surface cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>

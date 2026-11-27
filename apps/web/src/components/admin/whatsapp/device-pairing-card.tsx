@@ -206,12 +206,12 @@ export function DevicePairingCard({ initialSession }: DevicePairingCardProps) {
             </button>
             {isConnected ? (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-2xs font-extrabold bg-success/15 text-success border border-success/30">
-                <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse"></span>
+                <span className="w-1.5 h-1.5 rounded-full bg-success"></span>
                 Connected
               </span>
             ) : isQrReady && !isQrExpired ? (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-2xs font-extrabold bg-warning/15 text-warning border border-warning/30">
-                <span className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse"></span>
+                <span className="w-1.5 h-1.5 rounded-full bg-warning"></span>
                 Live Socket
               </span>
             ) : (

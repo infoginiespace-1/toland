@@ -139,10 +139,71 @@ export function StorefrontNavbar() {
 
   return (
     <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-border shadow-subtle">
-      {/* Top Announcement Ribbon */}
-      <div className="bg-primary text-white text-[11px] sm:text-xs font-medium py-1.5 px-4 text-center tracking-normal flex items-center justify-center gap-2">
-        <span className="inline-block w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
-        <span>Factory Direct Premium Denim · Sheikhpura (Bihar) · Free Express Shipping Above ₹999</span>
+      {/* Top Announcement Ribbon - Sensex Style Right-to-Left Continuous Ticker */}
+      <div className="bg-primary text-white text-[11px] sm:text-xs font-semibold py-1.5 overflow-hidden group-marquee border-b border-primary-hover relative cursor-default">
+        <div className="animate-marquee-infinite flex items-center gap-10 whitespace-nowrap">
+          {/* Track 1 */}
+          <div className="flex items-center gap-8 shrink-0">
+            <span className="flex items-center gap-1.5">
+              <span>🏭</span> FACTORY DIRECT PREMIUM DENIM · SHEIKHPURA (BIHAR)
+            </span>
+            <span className="text-white/40">✦</span>
+            <span className="flex items-center gap-1.5">
+              <span>⚡</span> DISPATCH WITHIN 24 HOURS ACROSS INDIA
+            </span>
+            <span className="text-white/40">✦</span>
+            <span className="flex items-center gap-1.5">
+              <span>📦</span> FREE EXPRESS SHIPPING ON PREPAID ORDERS OVER ₹999
+            </span>
+            <span className="text-white/40">✦</span>
+            <span className="flex items-center gap-1.5">
+              <span>💎</span> 100% COMBED RING-SPUN COTTON · IN-HOUSE STONEWASH
+            </span>
+            <span className="text-white/40">✦</span>
+            <span className="flex items-center gap-1.5">
+              <span>🏷️</span> USE CODE <strong className="bg-white/20 px-1.5 py-0.5 rounded text-white tracking-wider font-bold">TOLAND10</strong> FOR 10% OFF
+            </span>
+            <span className="text-white/40">✦</span>
+            <span className="flex items-center gap-1.5">
+              <span>🛡️</span> 7-DAY DOORSTEP EXCHANGE & AUTHENTIC WARRANTY
+            </span>
+            <span className="text-white/40">✦</span>
+            <span className="flex items-center gap-1.5">
+              <span>📞</span> WHATSAPP FACTORY DESK: +91 87971 86001
+            </span>
+          </div>
+
+          {/* Track 2 (Seamless Infinite Duplicate) */}
+          <div className="flex items-center gap-8 shrink-0" aria-hidden="true">
+            <span className="flex items-center gap-1.5">
+              <span>🏭</span> FACTORY DIRECT PREMIUM DENIM · SHEIKHPURA (BIHAR)
+            </span>
+            <span className="text-white/40">✦</span>
+            <span className="flex items-center gap-1.5">
+              <span>⚡</span> DISPATCH WITHIN 24 HOURS ACROSS INDIA
+            </span>
+            <span className="text-white/40">✦</span>
+            <span className="flex items-center gap-1.5">
+              <span>📦</span> FREE EXPRESS SHIPPING ON PREPAID ORDERS OVER ₹999
+            </span>
+            <span className="text-white/40">✦</span>
+            <span className="flex items-center gap-1.5">
+              <span>💎</span> 100% COMBED RING-SPUN COTTON · IN-HOUSE STONEWASH
+            </span>
+            <span className="text-white/40">✦</span>
+            <span className="flex items-center gap-1.5">
+              <span>🏷️</span> USE CODE <strong className="bg-white/20 px-1.5 py-0.5 rounded text-white tracking-wider font-bold">TOLAND10</strong> FOR 10% OFF
+            </span>
+            <span className="text-white/40">✦</span>
+            <span className="flex items-center gap-1.5">
+              <span>🛡️</span> 7-DAY DOORSTEP EXCHANGE & AUTHENTIC WARRANTY
+            </span>
+            <span className="text-white/40">✦</span>
+            <span className="flex items-center gap-1.5">
+              <span>📞</span> WHATSAPP FACTORY DESK: +91 87971 86001
+            </span>
+          </div>
+        </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -158,9 +219,8 @@ export function StorefrontNavbar() {
             </button>
 
             <Link href="/" className="flex flex-col group">
-              <span className="text-xl sm:text-2xl font-extrabold tracking-tight text-text leading-none flex items-center gap-1">
+              <span className="text-xl sm:text-2xl font-extrabold tracking-tight text-text leading-none flex items-center">
                 TOLAND
-                <span className="w-2 h-2 rounded-full bg-accent inline-block"></span>
               </span>
               <span className="text-[10px] tracking-widest font-semibold text-muted uppercase mt-0.5">
                 Denim & Casuals
