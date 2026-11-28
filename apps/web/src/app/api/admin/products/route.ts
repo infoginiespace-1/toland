@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { hasAdminPermission } from '@/lib/admin-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,7 +11,7 @@ export async function GET(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user || (user.app_metadata?.role !== 'admin' && user.app_metadata?.role !== 'staff')) {
+    if (!hasAdminPermission(user, 'catalog')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -63,8 +64,8 @@ export async function POST(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user || user.app_metadata?.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized: Admin role required' }, { status: 401 });
+    if (!hasAdminPermission(user, 'catalog')) {
+      return NextResponse.json({ error: 'Forbidden: Missing catalog permission' }, { status: 403 });
     }
 
     const body = await request.json();
@@ -160,8 +161,8 @@ export async function PUT(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user || user.app_metadata?.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized: Admin role required' }, { status: 401 });
+    if (!hasAdminPermission(user, 'catalog')) {
+      return NextResponse.json({ error: 'Forbidden: Missing catalog permission' }, { status: 403 });
     }
 
     const body = await request.json();
@@ -257,8 +258,8 @@ export async function DELETE(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user || user.app_metadata?.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized: Admin role required' }, { status: 401 });
+    if (!hasAdminPermission(user, 'catalog')) {
+      return NextResponse.json({ error: 'Forbidden: Missing catalog permission' }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);

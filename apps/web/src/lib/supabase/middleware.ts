@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import type { Database } from '@toland/shared';
+import { canRoleAccessPath, isTeamRole, resolveUserRole } from '@/lib/rbac';
 
 export async function updateSession(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -97,32 +98,25 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(url);
     }
 
-    const role = (user.app_metadata?.role as string) || (user.user_metadata?.role as string) || 'customer';
-    const email = user.email?.toLowerCase();
-    const isStaff =
-      role === 'admin' ||
-      role === 'staff' ||
-      email === 'dawoodhussain504@gmail.com' ||
-      email === 'info.giniespace@gmail.com';
+    const role = resolveUserRole(user);
 
-    if (!isStaff) {
+    if (!isTeamRole(role)) {
       const url = request.nextUrl.clone();
       url.pathname = '/';
       return NextResponse.redirect(url);
     }
+
+    if (!canRoleAccessPath(role, pathname)) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/admin';
+      return NextResponse.redirect(url);
+    }
   }
 
-  // Auth route redirect if already logged in as staff
+  // Auth route redirect if already logged in with team privileges
   if (isAuthRoute && pathname === '/auth/login' && user) {
-    const role = (user.app_metadata?.role as string) || (user.user_metadata?.role as string) || 'customer';
-    const email = user.email?.toLowerCase();
-    const isStaff =
-      role === 'admin' ||
-      role === 'staff' ||
-      email === 'dawoodhussain504@gmail.com' ||
-      email === 'info.giniespace@gmail.com';
-
-    if (isStaff) {
+    const role = resolveUserRole(user);
+    if (isTeamRole(role)) {
       const redirectTo = request.nextUrl.searchParams.get('redirectTo') || '/admin';
       return NextResponse.redirect(new URL(redirectTo, request.url));
     }

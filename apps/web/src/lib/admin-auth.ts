@@ -1,23 +1,33 @@
 import { User } from '@supabase/supabase-js';
+import {
+  AdminModule,
+  AppRole,
+  hasModuleAccess,
+  isTeamRole,
+  resolveUserRole,
+} from '@/lib/rbac';
 
-const ADMIN_EMAILS = ['info.giniespace@gmail.com', 'dawoodhussain504@gmail.com'];
+export function getUserRole(user: User | null): AppRole {
+  return resolveUserRole(user);
+}
 
 export function isAdminOrStaff(user: User | null): boolean {
-  if (!user) return false;
-  const role = user.app_metadata?.role || user.user_metadata?.role;
-  const email = user.email?.toLowerCase() || '';
-  return role === 'admin' || role === 'staff' || ADMIN_EMAILS.includes(email);
+  return isTeamRole(resolveUserRole(user));
 }
 
 export function isStrictAdmin(user: User | null): boolean {
-  if (!user) return false;
-  const role = user.app_metadata?.role || user.user_metadata?.role;
-  const email = user.email?.toLowerCase() || '';
-  return role === 'admin' || ADMIN_EMAILS.includes(email);
+  return resolveUserRole(user) === 'admin';
 }
 
-export async function triggerBridgeEndpoint(path: '/trigger-queue' | '/resume' | '/pause'): Promise<void> {
-  const bridgeUrl = process.env.WHATSAPP_BRIDGE_URL || 'https://toland-whatsapp-bridge.onrender.com';
+export function hasAdminPermission(user: User | null, mod: AdminModule): boolean {
+  return hasModuleAccess(resolveUserRole(user), mod);
+}
+
+export async function triggerBridgeEndpoint(
+  path: '/trigger-queue' | '/resume' | '/pause'
+): Promise<void> {
+  const bridgeUrl =
+    process.env.WHATSAPP_BRIDGE_URL || 'https://toland-whatsapp-bridge.onrender.com';
   const secret = process.env.WHATSAPP_BRIDGE_SECRET || 'toland_bridge_secret_dev';
   try {
     const controller = new AbortController();

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { findVerifiedUserByPhone, normalizeIndianPhone } from '@/lib/auth-helpers';
+import { isTeamRole, normalizeRoleValue } from '@/lib/rbac';
 
 export async function POST(request: Request) {
   try {
@@ -128,7 +129,7 @@ export async function POST(request: Request) {
       success: true,
       token_hash: linkData.properties.hashed_token,
       role: assignedRole,
-      redirectTo: assignedRole === 'admin' || assignedRole === 'staff' ? '/admin' : '/',
+      redirectTo: isTeamRole(normalizeRoleValue(assignedRole)) ? '/admin' : '/',
     });
   } catch (err: any) {
     console.error('Error in /api/auth/verify-otp:', err);

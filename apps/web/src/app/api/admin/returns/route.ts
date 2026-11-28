@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { hasAdminPermission } from '@/lib/admin-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,15 +12,7 @@ export async function PUT(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    const role = user?.app_metadata?.role;
-    const email = user?.email?.toLowerCase();
-    if (
-      !user ||
-      (role !== 'admin' &&
-        role !== 'staff' &&
-        email !== 'dawoodhussain504@gmail.com' &&
-        email !== 'info.giniespace@gmail.com')
-    ) {
+    if (!hasAdminPermission(user, 'orders')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

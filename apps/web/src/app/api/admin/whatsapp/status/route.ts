@@ -1,9 +1,19 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { hasAdminPermission } from '@/lib/admin-auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!hasAdminPermission(user, 'whatsapp_inbox')) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const bridgeUrl = process.env.WHATSAPP_BRIDGE_URL || 'https://toland-whatsapp-bridge.onrender.com';
   const secret = process.env.WHATSAPP_BRIDGE_SECRET || 'toland_bridge_secret_dev';
 

@@ -2,6 +2,7 @@ import React from 'react';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { AdminSidebar } from '@/components/admin/admin-sidebar';
+import { isTeamRole, resolveUserRole } from '@/lib/rbac';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,8 +20,8 @@ export default async function AdminLayout({
     redirect('/auth/login?redirectTo=/admin');
   }
 
-  const role = (user.app_metadata?.role as string) || 'customer';
-  if (role !== 'admin' && role !== 'staff') {
+  const role = resolveUserRole(user);
+  if (!isTeamRole(role)) {
     redirect('/');
   }
 

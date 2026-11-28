@@ -25,6 +25,7 @@ import {
 import { SearchModal } from '@/components/storefront/search-modal';
 import { WishlistDrawer } from '@/components/storefront/wishlist-drawer';
 import { MobileBottomNav } from '@/components/storefront/mobile-bottom-nav';
+import { isTeamRole, resolveUserRole } from '@/lib/rbac';
 
 const CATEGORY_LINKS = [
   {
@@ -79,16 +80,7 @@ export function StorefrontNavbar() {
 
         if (currentUser) {
           setUser(currentUser);
-          const role =
-            currentUser.app_metadata?.role ||
-            currentUser.user_metadata?.role ||
-            'customer';
-          const email = currentUser.email?.toLowerCase();
-          setIsAdmin(
-            role === 'admin' ||
-              role === 'staff' ||
-              email === 'info.giniespace@gmail.com'
-          );
+          setIsAdmin(isTeamRole(resolveUserRole(currentUser)));
         } else {
           setUser(null);
           setIsAdmin(false);
@@ -108,16 +100,7 @@ export function StorefrontNavbar() {
       const currentUser = session?.user || null;
       setUser(currentUser);
       if (currentUser) {
-        const role =
-          currentUser.app_metadata?.role ||
-          currentUser.user_metadata?.role ||
-          'customer';
-        const email = currentUser.email?.toLowerCase();
-        setIsAdmin(
-          role === 'admin' ||
-            role === 'staff' ||
-            email === 'info.giniespace@gmail.com'
-        );
+        setIsAdmin(isTeamRole(resolveUserRole(currentUser)));
       } else {
         setIsAdmin(false);
       }

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { COMPANY_DETAILS } from '@toland/shared';
+import { isTeamRole, normalizeRoleValue, resolveUserRole } from '@/lib/rbac';
 import {
   MessageSquare,
   Mail,
@@ -162,7 +163,7 @@ function LoginFormContent() {
         throw sessionError;
       }
 
-      if (data.role === 'admin' || data.role === 'staff') {
+      if (isTeamRole(normalizeRoleValue(data.role))) {
         router.push('/admin');
       } else {
         router.push(redirectTo);
@@ -201,14 +202,7 @@ function LoginFormContent() {
       }
 
       const user = data.user;
-      const role = (user?.app_metadata?.role as string) || (user?.user_metadata?.role as string) || 'customer';
-
-      if (
-        role === 'admin' || 
-        role === 'staff' || 
-        email.toLowerCase() === 'dawoodhussain504@gmail.com' ||
-        email.toLowerCase() === 'info.giniespace@gmail.com'
-      ) {
+      if (isTeamRole(resolveUserRole(user))) {
         router.push('/admin');
       } else {
         router.push(redirectTo);
@@ -223,16 +217,12 @@ function LoginFormContent() {
   };
 
   const completePostAuthRedirect = (user: any, targetEmail: string) => {
-    const role =
-      (user?.app_metadata?.role as string) ||
-      (user?.user_metadata?.role as string) ||
-      'customer';
-    if (
-      role === 'admin' ||
-      role === 'staff' ||
-      targetEmail.toLowerCase() === 'dawoodhussain504@gmail.com' ||
-      targetEmail.toLowerCase() === 'info.giniespace@gmail.com'
-    ) {
+    const resolved = resolveUserRole({
+      email: targetEmail || user?.email,
+      app_metadata: user?.app_metadata,
+      user_metadata: user?.user_metadata,
+    });
+    if (isTeamRole(resolved)) {
       router.push('/admin');
     } else {
       router.push(redirectTo);

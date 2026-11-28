@@ -31,7 +31,14 @@ import {
   Sliders,
   Star,
   RotateCcw,
+  ShieldCheck,
 } from 'lucide-react';
+import {
+  AdminModule,
+  ROLE_META,
+  hasModuleAccess,
+  normalizeRoleValue,
+} from '@/lib/rbac';
 
 interface AdminSidebarProps {
   userPhone?: string;
@@ -41,54 +48,67 @@ interface AdminSidebarProps {
 export function AdminSidebar({ userPhone = 'Admin', userRole = 'admin' }: AdminSidebarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const currentRole = normalizeRoleValue(userRole);
+  const roleLabel = ROLE_META[currentRole]?.shortLabel || userRole;
 
-  const navItems = [
+  const rawNavItems: {
+    group: string;
+    links: { label: string; href: string; icon: any; module: AdminModule }[];
+  }[] = [
     {
       group: 'Core Storefront',
       links: [
-        { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
-        { label: 'Products', href: '/admin/products', icon: Package },
-        { label: 'Categories', href: '/admin/categories', icon: Layers },
-        { label: 'Banners', href: '/admin/banners', icon: ImageIcon },
-        { label: 'Customer Reviews', href: '/admin/reviews', icon: Star },
-        { label: 'Coupons', href: '/admin/coupons', icon: Tag },
-        { label: 'Orders & Shipments', href: '/admin/orders', icon: ShoppingBag },
-        { label: 'Returns & Exchanges', href: '/admin/returns', icon: RotateCcw },
+        { label: 'Dashboard', href: '/admin', icon: LayoutDashboard, module: 'dashboard' },
+        { label: 'Products', href: '/admin/products', icon: Package, module: 'catalog' },
+        { label: 'Categories', href: '/admin/categories', icon: Layers, module: 'catalog' },
+        { label: 'Banners', href: '/admin/banners', icon: ImageIcon, module: 'catalog' },
+        { label: 'Customer Reviews', href: '/admin/reviews', icon: Star, module: 'catalog' },
+        { label: 'Coupons', href: '/admin/coupons', icon: Tag, module: 'catalog' },
+        { label: 'Orders & Shipments', href: '/admin/orders', icon: ShoppingBag, module: 'orders' },
+        { label: 'Returns & Exchanges', href: '/admin/returns', icon: RotateCcw, module: 'orders' },
+        { label: 'Users & Roles', href: '/admin/users', icon: ShieldCheck, module: 'users' },
       ],
     },
     {
       group: 'ERP & Manufacturing',
       links: [
-        { label: 'ERP Overview', href: '/admin/erp', icon: LayoutDashboard },
-        { label: 'Raw Materials', href: '/admin/erp/raw-materials', icon: Boxes },
-        { label: 'Suppliers', href: '/admin/erp/suppliers', icon: Factory },
-        { label: 'Bill of Materials', href: '/admin/erp/boms', icon: FileSpreadsheet },
-        { label: 'Purchase Orders', href: '/admin/erp/purchase-orders', icon: ClipboardList },
-        { label: 'Production Runs', href: '/admin/erp/production', icon: Layers },
-        { label: 'Stock Ledger', href: '/admin/erp/stock-ledger', icon: Activity },
-        { label: 'B2B Price Tiers', href: '/admin/erp/b2b-tiers', icon: Percent },
+        { label: 'ERP Overview', href: '/admin/erp', icon: LayoutDashboard, module: 'erp' },
+        { label: 'Raw Materials', href: '/admin/erp/raw-materials', icon: Boxes, module: 'erp' },
+        { label: 'Suppliers', href: '/admin/erp/suppliers', icon: Factory, module: 'erp' },
+        { label: 'Bill of Materials', href: '/admin/erp/boms', icon: FileSpreadsheet, module: 'erp' },
+        { label: 'Purchase Orders', href: '/admin/erp/purchase-orders', icon: ClipboardList, module: 'erp' },
+        { label: 'Production Runs', href: '/admin/erp/production', icon: Layers, module: 'erp' },
+        { label: 'Stock Ledger', href: '/admin/erp/stock-ledger', icon: Activity, module: 'erp' },
+        { label: 'B2B Price Tiers', href: '/admin/erp/b2b-tiers', icon: Percent, module: 'erp' },
       ],
     },
     {
       group: 'CRM & B2B Pipeline',
       links: [
-        { label: 'Customer Directory', href: '/admin/crm/customers', icon: Users },
-        { label: 'B2B Leads Pipeline', href: '/admin/crm/leads', icon: Contact },
-        { label: 'Scheduled Follow-ups', href: '/admin/crm/followups', icon: CalendarClock },
-        { label: 'Activity Audit Feed', href: '/admin/crm/activities', icon: Activity },
+        { label: 'Customer Directory', href: '/admin/crm/customers', icon: Users, module: 'crm' },
+        { label: 'B2B Leads Pipeline', href: '/admin/crm/leads', icon: Contact, module: 'crm' },
+        { label: 'Scheduled Follow-ups', href: '/admin/crm/followups', icon: CalendarClock, module: 'crm' },
+        { label: 'Activity Audit Feed', href: '/admin/crm/activities', icon: Activity, module: 'crm' },
       ],
     },
     {
       group: 'WhatsApp & Engagement',
       links: [
-        { label: 'Live Inbox & Bridge', href: '/admin/whatsapp', icon: MessageSquare },
-        { label: 'Message Templates', href: '/admin/whatsapp/templates', icon: FileSpreadsheet },
-        { label: 'Broadcast Campaigns', href: '/admin/whatsapp/campaigns', icon: Radio },
-        { label: 'Auto-Reply Bot', href: '/admin/whatsapp/auto-replies', icon: Bot },
-        { label: 'Anti-Ban Engine', href: '/admin/whatsapp/settings', icon: Sliders },
+        { label: 'Live Inbox & Bridge', href: '/admin/whatsapp', icon: MessageSquare, module: 'whatsapp_inbox' },
+        { label: 'Message Templates', href: '/admin/whatsapp/templates', icon: FileSpreadsheet, module: 'whatsapp_admin' },
+        { label: 'Broadcast Campaigns', href: '/admin/whatsapp/campaigns', icon: Radio, module: 'whatsapp_admin' },
+        { label: 'Auto-Reply Bot', href: '/admin/whatsapp/auto-replies', icon: Bot, module: 'whatsapp_admin' },
+        { label: 'Anti-Ban Engine', href: '/admin/whatsapp/settings', icon: Sliders, module: 'whatsapp_admin' },
       ],
     },
   ];
+
+  const navItems = rawNavItems
+    .map((sec) => ({
+      ...sec,
+      links: sec.links.filter((link) => hasModuleAccess(currentRole, link.module)),
+    }))
+    .filter((sec) => sec.links.length > 0);
 
   const sidebarContent = (
     <div className="flex flex-col h-full bg-[#0B1120] text-white select-none">
@@ -179,7 +199,7 @@ export function AdminSidebar({ userPhone = 'Admin', userRole = 'admin' }: AdminS
             <p className="text-xs font-semibold text-slate-200 truncate">{userPhone}</p>
             <div className="flex items-center gap-1 text-[10px] text-slate-400 uppercase font-mono">
               <Shield className="w-2.5 h-2.5 text-emerald-400" />
-              <span>{userRole}</span>
+              <span>{roleLabel}</span>
             </div>
           </div>
         </div>

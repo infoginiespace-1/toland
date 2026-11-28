@@ -1,8 +1,17 @@
 import { NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createClient } from '@/lib/supabase/server';
+import { isStrictAdmin } from '@/lib/admin-auth';
 
 export async function POST(request: Request) {
   try {
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!isStrictAdmin(user)) {
+      return NextResponse.json({ error: 'Forbidden: Super Admin required' }, { status: 403 });
+    }
+
     const body = await request.json();
     const phone = String(body.phone || '').trim().replace(/[^0-9]/g, '');
 
