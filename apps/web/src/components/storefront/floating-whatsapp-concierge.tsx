@@ -59,13 +59,13 @@ export function FloatingWhatsAppConcierge() {
 
   return (
     <div
-      className={`fixed right-4 sm:bottom-6 sm:right-6 z-40 flex flex-col items-end ${
-        isProductDetail ? 'bottom-32' : 'bottom-20'
+      className={`fixed right-3 sm:right-6 z-40 flex flex-col items-end transition-all ${
+        isProductDetail ? 'bottom-24 sm:bottom-6' : 'bottom-16 sm:bottom-6'
       }`}
     >
       {/* Concierge Modal Card */}
       {isOpen && (
-        <div className="mb-3 w-80 sm:w-96 rounded-3xl bg-white border border-border shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200">
+        <div className="mb-3 w-[calc(100vw-24px)] max-w-sm sm:w-96 rounded-3xl bg-white border border-border shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200">
           {/* Header */}
           <div className="bg-primary p-4 text-white flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -153,11 +153,11 @@ export function FloatingWhatsAppConcierge() {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="group relative flex items-center gap-2.5 px-4 py-3 rounded-full bg-emerald-700 text-white shadow-xl hover:bg-emerald-800 transition-all hover:scale-105 active:scale-95 cursor-pointer border-2 border-white"
+        className="group relative flex items-center gap-2 p-2.5 sm:px-4 sm:py-3 rounded-full bg-emerald-700 text-white shadow-xl hover:bg-emerald-800 transition-all hover:scale-105 active:scale-95 cursor-pointer border-2 border-white"
         aria-label="WhatsApp Concierge Support"
       >
-        <span className="w-2.5 h-2.5 rounded-full bg-emerald-300" />
-        <MessageSquare className="w-5 h-5 fill-white text-emerald-700" />
+        <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-emerald-300" />
+        <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 fill-white text-emerald-700" />
         <span className="text-xs font-black tracking-wide hidden sm:inline">
           Factory Help
         </span>

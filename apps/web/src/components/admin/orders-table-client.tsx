@@ -172,8 +172,76 @@ export function OrdersTableClient({ orders }: OrdersTableClientProps) {
         </div>
       </div>
 
-      {/* Orders Table */}
-      <div className="overflow-x-auto">
+      {/* Mobile Orders Card List (md:hidden) */}
+      <div className="md:hidden divide-y divide-[#CFE0D5]">
+        {filtered.length > 0 ? (
+          filtered.map((order) => {
+            const address = order.address_snapshot || {};
+            const itemsCount = (order.order_items || []).reduce(
+              (acc: number, i: any) => acc + (i.qty || 1),
+              0
+            );
+
+            return (
+              <div key={order.id} className="p-3.5 space-y-2.5 hover:bg-[#F0F7F2]/30 transition-colors">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Link
+                      href={`/admin/orders/${order.id}`}
+                      className="font-mono font-black text-primary hover:underline text-sm"
+                    >
+                      {order.order_no}
+                    </Link>
+                    <span className="text-3xs text-muted block">
+                      {new Date(order.created_at).toLocaleDateString('en-IN', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      })} · {itemsCount} items
+                    </span>
+                  </div>
+                  <div>{getStatusBadge(order.status)}</div>
+                </div>
+
+                <div className="flex items-center justify-between text-xs pt-1">
+                  <div>
+                    <span className="font-bold text-slate-800">{address.name || 'Customer'}</span>
+                    <div className="text-3xs text-muted font-mono flex items-center gap-1">
+                      <Phone className="w-2.5 h-2.5" />
+                      <span>{address.phone || 'No phone'}</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-black text-sm text-text font-mono">₹{order.total}</div>
+                    <span className="text-3xs font-bold uppercase text-muted">
+                      {order.payment_method === 'cod' ? 'Cash on Delivery' : 'Prepaid (Online)'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="pt-2 flex items-center justify-between text-3xs border-t border-slate-100">
+                  <div className="text-muted flex items-center gap-1 truncate max-w-[180px]">
+                    <MapPin className="w-3 h-3 text-muted shrink-0" />
+                    <span className="truncate">{address.city}, {address.state}</span>
+                  </div>
+                  <Link
+                    href={`/admin/orders/${order.id}`}
+                    className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-primary text-white font-bold text-3xs shadow-2xs hover:bg-primary-hover transition-colors"
+                  >
+                    <span>Manage Order</span>
+                    <ChevronRight className="w-3 h-3" />
+                  </Link>
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <div className="py-8 text-center text-xs text-muted">No orders found matching your search.</div>
+        )}
+      </div>
+
+      {/* Desktop Orders Table (hidden md:block) */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-left border-collapse text-xs">
           <thead>
             <tr className="border-b border-[#CFE0D5] bg-[#F0F7F2] text-primary font-bold text-3xs uppercase tracking-wider">

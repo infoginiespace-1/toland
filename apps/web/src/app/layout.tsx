@@ -38,12 +38,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-surface text-text flex flex-col">
+      <body className="min-h-screen bg-surface text-text flex flex-col w-full max-w-full overflow-x-clip">
         <CartProvider>
           <WishlistProvider>
             <CompareProvider>
               <StorefrontNavbar />
-              <div className="flex-1 flex flex-col pb-16 md:pb-0">
+              <div className="flex-1 flex flex-col pb-24 md:pb-0 w-full max-w-full min-w-0">
                 {children}
               </div>
               <StorefrontFooter />

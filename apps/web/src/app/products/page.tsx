@@ -2,6 +2,7 @@ import React, { Suspense } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { QuickWishlistButton } from '@/components/storefront/quick-wishlist-button';
+import { MobileFilterDrawer } from '@/components/storefront/mobile-filter-drawer';
 import {
   Filter,
   ArrowUpDown,
@@ -11,6 +12,7 @@ import {
   ChevronRight,
   Sparkles,
   X,
+  SlidersHorizontal,
 } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -179,8 +181,8 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
           </p>
         </div>
 
-        {/* Sort Controls */}
-        <div className="flex items-center gap-2">
+        {/* Desktop Sort Controls */}
+        <div className="hidden sm:flex items-center gap-2">
           <ArrowUpDown className="w-3.5 h-3.5 text-muted" />
           <span className="text-xs font-semibold text-muted">Sort By:</span>
           <div className="flex flex-wrap gap-1.5 text-xs">
@@ -209,6 +211,121 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         </div>
       </div>
 
+      {/* Mobile-First Action Bar (Filters Drawer Button + Mobile Sort Options) */}
+      <div className="sm:hidden flex items-center justify-between gap-2 p-2.5 rounded-2xl bg-surface-alt border border-border">
+        <MobileFilterDrawer
+          categories={categories as any[]}
+          selectedCategory={selectedCategory}
+          selectedSize={selectedSize}
+          selectedFit={selectedFit}
+          selectedWash={selectedWash}
+          inStockOnly={inStockOnly}
+          selectedPriceRange={selectedPriceRange}
+          selectedSort={selectedSort}
+          searchQuery={searchQuery}
+          totalCount={rawProducts.length}
+          filteredCount={filteredProducts.length}
+          sizes={SIZES}
+          fits={FITS}
+          washes={WASHES}
+          priceRanges={PRICE_RANGES}
+        />
+
+        {/* Mobile Horizontal Sort Chips */}
+        <div className="flex items-center gap-1 overflow-x-auto scrollbar-none py-0.5">
+          {[
+            { label: 'Featured', val: 'featured' },
+            { label: 'Low-High', val: 'price_asc' },
+            { label: 'High-Low', val: 'price_desc' },
+            { label: 'New', val: 'newest' },
+          ].map((s) => {
+            const active = selectedSort === s.val;
+            return (
+              <Link
+                key={s.val}
+                href={createFilterUrl('sort', s.val)}
+                className={`px-2 py-1 rounded-lg text-3xs font-bold whitespace-nowrap transition-colors border ${
+                  active
+                    ? 'bg-primary text-white border-primary shadow-xs'
+                    : 'bg-surface border-border text-muted hover:text-text'
+                }`}
+              >
+                {s.label}
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Active Filter Chips (Removable with 1 tap) */}
+      {(selectedCategory || selectedSize || selectedFit || selectedWash || inStockOnly || selectedPriceRange) && (
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
+          <span className="text-3xs font-bold text-muted uppercase tracking-wider shrink-0 mr-1">
+            Active:
+          </span>
+          {selectedCategory && (
+            <Link
+              href={createFilterUrl('category', '')}
+              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-3xs font-bold whitespace-nowrap"
+            >
+              <span>{(categories as any[])?.find((c: any) => c.slug === selectedCategory)?.name || selectedCategory}</span>
+              <X className="w-3 h-3" />
+            </Link>
+          )}
+          {inStockOnly && (
+            <Link
+              href={createFilterUrl('in_stock', '')}
+              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 border border-emerald-200 text-emerald-800 text-3xs font-bold whitespace-nowrap"
+            >
+              <span>⚡ In-Stock</span>
+              <X className="w-3 h-3" />
+            </Link>
+          )}
+          {selectedPriceRange && (
+            <Link
+              href={createFilterUrl('price_range', '')}
+              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-3xs font-bold whitespace-nowrap"
+            >
+              <span>{PRICE_RANGES.find((p) => p.val === selectedPriceRange)?.label || selectedPriceRange}</span>
+              <X className="w-3 h-3" />
+            </Link>
+          )}
+          {selectedSize && (
+            <Link
+              href={createFilterUrl('size', '')}
+              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-3xs font-bold whitespace-nowrap"
+            >
+              <span>Waist: {selectedSize}&quot;</span>
+              <X className="w-3 h-3" />
+            </Link>
+          )}
+          {selectedFit && (
+            <Link
+              href={createFilterUrl('fit', '')}
+              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-3xs font-bold whitespace-nowrap"
+            >
+              <span>Fit: {selectedFit}</span>
+              <X className="w-3 h-3" />
+            </Link>
+          )}
+          {selectedWash && (
+            <Link
+              href={createFilterUrl('wash', '')}
+              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-3xs font-bold whitespace-nowrap"
+            >
+              <span>Wash: {selectedWash}</span>
+              <X className="w-3 h-3" />
+            </Link>
+          )}
+          <Link
+            href="/products"
+            className="text-3xs font-bold text-danger hover:underline ml-1 shrink-0"
+          >
+            Clear All
+          </Link>
+        </div>
+      )}
+
       {/* Search Query Active Tag */}
       {searchQuery && (
         <div className="flex items-center justify-between p-3.5 rounded-2xl bg-primary/10 border border-primary/20 text-xs">
@@ -228,8 +345,8 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         </div>
       )}
 
-      {/* Quick Category & Fit Pills (Mobile & Tablet only, sidebar handles Desktop) */}
-      <div className="flex lg:hidden items-center gap-2 overflow-x-auto pb-2 scrollbar-none text-xs">
+      {/* Quick Category Pills (Desktop & Tablet only, Mobile uses Filter Drawer) */}
+      <div className="hidden sm:flex lg:hidden items-center gap-2 overflow-x-auto pb-2 scrollbar-none text-xs">
         <Link
           href="/products"
           className={`px-3.5 py-1.5 rounded-full font-bold whitespace-nowrap transition-colors border ${
@@ -274,10 +391,10 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         })}
       </div>
 
-      {/* Layout Grid: Filters Sidebar + Products Grid */}
+      {/* Layout Grid: Filters Sidebar (Hidden on mobile) + Products Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
-        {/* Sidebar Filters */}
-        <aside className="space-y-6 bg-surface-alt border border-border p-6 rounded-2xl shadow-xs">
+        {/* Sidebar Filters - Desktop Only */}
+        <aside className="hidden lg:block space-y-6 bg-surface-alt border border-border p-6 rounded-2xl shadow-xs">
           <div className="flex items-center justify-between pb-3 border-b border-border">
             <div className="flex items-center gap-2">
               <Filter className="w-4 h-4 text-primary" />
@@ -439,25 +556,25 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         </aside>
 
         {/* Products Grid */}
-        <div className="lg:col-span-3">
+        <div className="lg:col-span-3 min-w-0">
           {filteredProducts.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
               {filteredProducts.map((product: any) => {
                 const discount = product.mrp
                   ? Math.round(((product.mrp - product.base_price) / product.mrp) * 100)
                   : 0;
                 const variants = product.variants || [];
-                const sizes = Array.from(new Set(variants.map((v: any) => v.size))).slice(0, 6);
+                const sizes = Array.from(new Set(variants.map((v: any) => v.size))).slice(0, 4);
 
                 return (
                   <div
                     key={product.id}
-                    className="group rounded-2xl bg-surface-alt border border-border hover:border-primary/70 hover:shadow-lg transition-all flex flex-col justify-between overflow-hidden"
+                    className="group rounded-2xl bg-surface-alt border border-border hover:border-primary/70 hover:shadow-lg transition-all flex flex-col justify-between overflow-hidden shadow-2xs"
                   >
                     {/* Visual Container */}
-                    <div className="relative aspect-4/5 bg-surface border-b border-border overflow-hidden">
+                    <div className="relative aspect-[3/4] sm:aspect-4/5 bg-surface border-b border-border overflow-hidden">
                       {discount > 0 && (
-                        <span className="absolute top-3 left-3 z-10 px-2 py-0.5 rounded-full text-3xs font-extrabold uppercase bg-danger text-white shadow-sm pointer-events-none">
+                        <span className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10 px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-3xs font-extrabold uppercase bg-danger text-white shadow-xs pointer-events-none">
                           {discount}% OFF
                         </span>
                       )}
@@ -472,7 +589,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
                           image: product.images?.[0]?.path,
                           category: product.category?.name,
                         }}
-                        className="absolute top-3 right-3 z-20"
+                        className="absolute top-2 right-2 sm:top-3 sm:right-3 z-20"
                       />
 
                       <Link
@@ -488,35 +605,35 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
                             loading="lazy"
                           />
                         ) : (
-                          <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-gradient-to-br from-surface to-surface-alt">
-                            <div className="w-20 h-20 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary mb-3 group-hover:scale-105 transition-transform">
-                              <Layers className="w-10 h-10" />
+                          <div className="w-full h-full flex flex-col items-center justify-center p-4 sm:p-6 text-center bg-gradient-to-br from-surface to-surface-alt">
+                            <div className="w-12 h-12 sm:w-20 sm:h-20 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary mb-2 sm:mb-3 group-hover:scale-105 transition-transform">
+                              <Layers className="w-6 h-6 sm:w-10 sm:h-10" />
                             </div>
-                            <span className="text-xs font-bold text-text line-clamp-1">{product.name}</span>
-                            <span className="text-3xs text-muted font-medium mt-1">100% Ring-Spun Cotton</span>
+                            <span className="text-3xs sm:text-xs font-bold text-text line-clamp-1">{product.name}</span>
+                            <span className="text-[9px] sm:text-3xs text-muted font-medium mt-0.5 sm:mt-1">100% Cotton</span>
                           </div>
                         )}
                       </Link>
                     </div>
 
                     {/* Details */}
-                    <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                    <div className="p-2.5 sm:p-5 flex-1 flex flex-col justify-between space-y-2 sm:space-y-4">
                       <div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-primary block mb-1">
+                        <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-primary block mb-0.5 sm:mb-1 truncate">
                           {product.category?.name || 'Denim'}
                         </span>
                         <Link href={`/products/${product.slug}`} className="block">
-                          <h3 className="text-sm font-bold text-text line-clamp-2 group-hover:text-primary transition-colors">
+                          <h3 className="text-xs sm:text-sm font-bold text-text line-clamp-1 sm:line-clamp-2 group-hover:text-primary transition-colors">
                             {product.name}
                           </h3>
                         </Link>
 
                         {/* Sizes Pill list */}
-                        <div className="flex flex-wrap gap-1 mt-2.5">
+                        <div className="flex flex-wrap gap-1 mt-1.5 sm:mt-2.5">
                           {sizes.map((sz: any) => (
                             <span
                               key={sz}
-                              className="px-2 py-0.5 rounded bg-surface border border-border text-3xs font-mono font-semibold text-muted"
+                              className="px-1.5 py-0.5 rounded bg-surface border border-border text-[9px] sm:text-3xs font-mono font-semibold text-muted"
                             >
                               {sz}
                             </span>
@@ -524,19 +641,19 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
                         </div>
                       </div>
 
-                      <div className="pt-3 border-t border-border flex items-center justify-between">
-                        <div>
-                          <div className="text-base font-black text-text">₹{product.base_price}</div>
+                      <div className="pt-2 sm:pt-3 border-t border-border flex items-center justify-between gap-1">
+                        <div className="min-w-0">
+                          <div className="text-sm sm:text-base font-black text-text truncate">₹{product.base_price}</div>
                           {product.mrp && (
-                            <div className="text-3xs text-muted line-through">MRP ₹{product.mrp}</div>
+                            <div className="text-[10px] sm:text-3xs text-muted line-through truncate">MRP ₹{product.mrp}</div>
                           )}
                         </div>
 
                         <Link
                           href={`/products/${product.slug}`}
-                          className="px-3.5 py-2 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary-hover shadow-2xs transition-colors"
+                          className="px-2 py-1.5 sm:px-3.5 sm:py-2 rounded-lg bg-primary text-white text-[10px] sm:text-xs font-bold hover:bg-primary-hover shadow-2xs transition-colors shrink-0"
                         >
-                          View & Buy
+                          View
                         </Link>
                       </div>
                     </div>

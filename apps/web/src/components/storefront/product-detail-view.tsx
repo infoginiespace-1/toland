@@ -1228,7 +1228,7 @@ export function ProductDetailView({
 
       {/* Mobile Sticky Add to Bag Bar (Visible on mobile when user scrolls past main action buttons) */}
       {showStickyBar && (
-        <div className="md:hidden fixed bottom-14 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-border shadow-xl px-4 py-2.5 animate-in slide-in-from-bottom duration-200">
+        <div className="md:hidden fixed bottom-[calc(56px+env(safe-area-inset-bottom))] left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-border shadow-xl px-4 py-2.5 animate-in slide-in-from-bottom duration-200">
           <div className="flex items-center justify-between gap-2.5">
             {/* Product Thumbnail & Price */}
             <div className="flex items-center gap-2 min-w-0 flex-1">

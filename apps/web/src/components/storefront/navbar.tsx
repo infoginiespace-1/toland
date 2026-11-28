@@ -164,9 +164,9 @@ export function StorefrontNavbar() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-border shadow-subtle">
+      <header className="sticky top-0 z-50 w-full max-w-full bg-white/95 backdrop-blur-md border-b border-border shadow-subtle overflow-x-clip">
       {/* Top Announcement Ribbon - Continuous Smooth Ticker */}
-      <div className="bg-primary text-white text-[11px] font-medium py-1.5 overflow-hidden group-marquee border-b border-primary-hover relative cursor-default">
+      <div className="w-full max-w-full bg-primary text-white text-[11px] font-medium py-1.5 overflow-hidden group-marquee border-b border-primary-hover relative cursor-default">
         <div className="animate-marquee-infinite flex items-center gap-10 whitespace-nowrap">
           <div className="flex items-center gap-8 shrink-0">
             <span className="flex items-center gap-1.5">

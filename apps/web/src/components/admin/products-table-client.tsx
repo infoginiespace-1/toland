@@ -133,8 +133,114 @@ export function ProductsTableClient({
         </div>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto">
+      {/* Mobile Products Card List (md:hidden) */}
+      <div className="md:hidden divide-y divide-[#CFE0D5]">
+        {filtered.length > 0 ? (
+          filtered.map((product) => {
+            const imageUrl = getImageUrl(product.images);
+            const totalStock = (product.variants || []).reduce(
+              (acc: number, v: any) => acc + Number(v.stock_qty || 0),
+              0
+            );
+            const isLowStock = totalStock <= 10;
+
+            return (
+              <div key={product.id} className="p-3.5 space-y-2.5 hover:bg-[#F0F7F2]/30 transition-colors">
+                <div className="flex items-start gap-3">
+                  <div className="w-14 h-14 rounded-xl bg-[#F0F7F2] border border-[#CFE0D5] overflow-hidden shrink-0 flex items-center justify-center">
+                    {imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={imageUrl}
+                        alt={product.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <Layers className="w-6 h-6 text-primary/40" />
+                    )}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-bold text-xs text-text truncate">{product.name}</span>
+                      {product.is_featured && (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full text-4xs font-black bg-warning/20 text-warning uppercase">
+                          <Sparkles className="w-2.5 h-2.5" />
+                          Featured
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-3xs text-primary font-bold block mt-0.5">
+                      {product.category?.name || 'Uncategorized'}
+                    </span>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-xs font-black text-slate-900 font-mono">₹{product.base_price}</span>
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-4xs font-mono font-bold ${
+                          totalStock === 0
+                            ? 'bg-danger/15 text-danger border border-danger/25'
+                            : isLowStock
+                            ? 'bg-warning/15 text-warning border border-warning/25'
+                            : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                        }`}
+                      >
+                        Stock: {totalStock} pcs
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-2 flex items-center justify-between border-t border-slate-100 text-xs">
+                  <span
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-4xs font-bold ${
+                      product.is_active
+                        ? 'bg-success/15 text-success border border-success/25'
+                        : 'bg-muted/15 text-muted border border-border'
+                    }`}
+                  >
+                    {product.is_active ? 'Active' : 'Archived'}
+                  </span>
+
+                  <div className="flex items-center gap-1.5">
+                    <Link
+                      href={`/products/${product.slug}`}
+                      target="_blank"
+                      className="p-1.5 rounded-lg text-muted hover:text-text hover:bg-[#F0F7F2]"
+                      title="View"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </Link>
+                    <Link
+                      href={`/admin/products/${product.id}/edit`}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary text-white text-3xs font-bold shadow-2xs hover:bg-primary-hover"
+                    >
+                      <Edit className="w-3 h-3" />
+                      <span>Edit</span>
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(product.id, product.name)}
+                      disabled={deletingId === product.id}
+                      className="p-1 rounded-lg text-danger hover:bg-danger/10 disabled:opacity-50"
+                    >
+                      {deletingId === product.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <div className="py-8 text-center text-xs text-muted">No manufactured products found matching your search.</div>
+        )}
+      </div>
+
+      {/* Desktop Products Table (hidden md:block) */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-left border-collapse text-xs">
           <thead>
             <tr className="border-b border-[#CFE0D5] bg-[#F0F7F2] text-primary font-bold text-3xs uppercase tracking-wider">
