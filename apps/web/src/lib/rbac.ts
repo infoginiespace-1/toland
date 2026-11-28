@@ -16,12 +16,11 @@ export type AdminModule =
   | 'whatsapp_admin'
   | 'users';
 
-export const SUPER_ADMIN_EMAILS = [
-  'info.giniespace@gmail.com',
-  'dawoodhussain504@gmail.com',
-];
+export const PRIMARY_SUPER_ADMIN_EMAIL = 'dawoodhussain504@gmail.com';
 
-export const PROTECTED_OWNER_PHONES = ['8797186001'];
+export const SUPER_ADMIN_EMAILS = [PRIMARY_SUPER_ADMIN_EMAIL];
+
+export const PROTECTED_OWNER_PHONES: string[] = [];
 
 export const ALL_ROLES: AppRole[] = [
   'admin',
@@ -51,9 +50,9 @@ export const ROLE_META: Record<
   }
 > = {
   admin: {
-    label: 'Super Admin',
+    label: 'Admin',
     shortLabel: 'Admin',
-    description: 'Full access to Storefront, ERP, CRM, WhatsApp Engine, Users & Role Assignment.',
+    description: 'Full operational access to Storefront, ERP, CRM & WhatsApp Engine (Only Primary Super Admin manages Users/Roles).',
     badgeClass: 'bg-purple-100 text-purple-800 border-purple-200',
     modules: [
       'dashboard',
@@ -63,7 +62,6 @@ export const ROLE_META: Record<
       'crm',
       'whatsapp_inbox',
       'whatsapp_admin',
-      'users',
     ],
   },
   erp_manager: {
@@ -160,15 +158,27 @@ export function requiredModuleForAdminPath(pathname: string): AdminModule {
   return 'dashboard';
 }
 
-export function canRoleAccessPath(role: AppRole, pathname: string): boolean {
+export function isPrimarySuperAdmin(
+  user?: { email?: string | null } | null
+): boolean {
+  if (!user?.email) return false;
+  return user.email.trim().toLowerCase() === PRIMARY_SUPER_ADMIN_EMAIL;
+}
+
+export function canRoleAccessPath(
+  role: AppRole,
+  pathname: string,
+  user?: { email?: string | null } | null
+): boolean {
   if (!isTeamRole(role)) return false;
+  if (pathname.startsWith('/admin/users')) {
+    return isPrimarySuperAdmin(user);
+  }
   const required = requiredModuleForAdminPath(pathname);
   return hasModuleAccess(role, required);
 }
 
-export function isProtectedOwner(email?: string | null, phone?: string | null): boolean {
+export function isProtectedOwner(email?: string | null, _phone?: string | null): boolean {
   const cleanEmail = (email || '').trim().toLowerCase();
-  if (SUPER_ADMIN_EMAILS.includes(cleanEmail)) return true;
-  const digits = (phone || '').replace(/\D/g, '').slice(-10);
-  return Boolean(digits && PROTECTED_OWNER_PHONES.includes(digits));
+  return cleanEmail === PRIMARY_SUPER_ADMIN_EMAIL;
 }

@@ -2,7 +2,7 @@ import React from 'react';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { isStrictAdmin } from '@/lib/admin-auth';
+import { isSoleSuperAdmin } from '@/lib/admin-auth';
 import { isProtectedOwner, resolveUserRole } from '@/lib/rbac';
 import { normalizeIndianPhone } from '@/lib/auth-helpers';
 import { UsersManager, AdminUserItem } from '@/components/admin/users-manager';
@@ -15,7 +15,7 @@ export default async function AdminUsersPage() {
     data: { user: currentUser },
   } = await supabase.auth.getUser();
 
-  if (!currentUser || !isStrictAdmin(currentUser)) {
+  if (!currentUser || !isSoleSuperAdmin(currentUser)) {
     redirect('/admin');
   }
 

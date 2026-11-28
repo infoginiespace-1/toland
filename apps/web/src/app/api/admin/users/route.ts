@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { isStrictAdmin } from '@/lib/admin-auth';
+import { isSoleSuperAdmin } from '@/lib/admin-auth';
 import { normalizeIndianPhone, isValidEmail } from '@/lib/auth-helpers';
 import {
   ALL_ROLES,
@@ -41,7 +41,7 @@ export async function GET() {
       data: { user: currentUser },
     } = await supabase.auth.getUser();
 
-    if (!currentUser || !isStrictAdmin(currentUser)) {
+    if (!currentUser || !isSoleSuperAdmin(currentUser)) {
       return NextResponse.json(
         { error: 'Forbidden: Only Super Admin can manage users and roles' },
         { status: 403 }
@@ -148,7 +148,7 @@ export async function POST(request: Request) {
       data: { user: currentUser },
     } = await supabase.auth.getUser();
 
-    if (!currentUser || !isStrictAdmin(currentUser)) {
+    if (!currentUser || !isSoleSuperAdmin(currentUser)) {
       return NextResponse.json(
         { error: 'Forbidden: Only Super Admin can assign team roles' },
         { status: 403 }

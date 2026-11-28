@@ -3,6 +3,7 @@ import {
   AdminModule,
   AppRole,
   hasModuleAccess,
+  isPrimarySuperAdmin,
   isTeamRole,
   resolveUserRole,
 } from '@/lib/rbac';
@@ -19,7 +20,12 @@ export function isStrictAdmin(user: User | null): boolean {
   return resolveUserRole(user) === 'admin';
 }
 
+export function isSoleSuperAdmin(user: User | null): boolean {
+  return isPrimarySuperAdmin(user);
+}
+
 export function hasAdminPermission(user: User | null, mod: AdminModule): boolean {
+  if (mod === 'users') return isPrimarySuperAdmin(user);
   return hasModuleAccess(resolveUserRole(user), mod);
 }
 

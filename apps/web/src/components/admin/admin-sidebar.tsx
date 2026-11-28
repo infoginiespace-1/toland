@@ -43,13 +43,20 @@ import {
 interface AdminSidebarProps {
   userPhone?: string;
   userRole?: string;
+  isSuperAdmin?: boolean;
 }
 
-export function AdminSidebar({ userPhone = 'Admin', userRole = 'admin' }: AdminSidebarProps) {
+export function AdminSidebar({
+  userPhone = 'Admin',
+  userRole = 'admin',
+  isSuperAdmin = false,
+}: AdminSidebarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const currentRole = normalizeRoleValue(userRole);
-  const roleLabel = ROLE_META[currentRole]?.shortLabel || userRole;
+  const roleLabel = isSuperAdmin
+    ? 'Super Admin'
+    : ROLE_META[currentRole]?.shortLabel || userRole;
 
   const rawNavItems: {
     group: string;
@@ -106,7 +113,11 @@ export function AdminSidebar({ userPhone = 'Admin', userRole = 'admin' }: AdminS
   const navItems = rawNavItems
     .map((sec) => ({
       ...sec,
-      links: sec.links.filter((link) => hasModuleAccess(currentRole, link.module)),
+      links: sec.links.filter((link) =>
+        link.module === 'users'
+          ? isSuperAdmin
+          : hasModuleAccess(currentRole, link.module)
+      ),
     }))
     .filter((sec) => sec.links.length > 0);
 

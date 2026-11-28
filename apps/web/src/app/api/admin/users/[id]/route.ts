@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { isStrictAdmin } from '@/lib/admin-auth';
+import { isSoleSuperAdmin } from '@/lib/admin-auth';
 import { normalizeIndianPhone } from '@/lib/auth-helpers';
 import {
   ALL_ROLES,
@@ -20,7 +20,7 @@ export async function PATCH(
       data: { user: currentUser },
     } = await supabase.auth.getUser();
 
-    if (!currentUser || !isStrictAdmin(currentUser)) {
+    if (!currentUser || !isSoleSuperAdmin(currentUser)) {
       return NextResponse.json(
         { error: 'Forbidden: Only Super Admin can assign roles' },
         { status: 403 }
@@ -156,7 +156,7 @@ export async function DELETE(
       data: { user: currentUser },
     } = await supabase.auth.getUser();
 
-    if (!currentUser || !isStrictAdmin(currentUser)) {
+    if (!currentUser || !isSoleSuperAdmin(currentUser)) {
       return NextResponse.json(
         { error: 'Forbidden: Only Super Admin can delete users' },
         { status: 403 }
