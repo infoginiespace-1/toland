@@ -150,31 +150,31 @@ export default function AccountPage() {
   const defaultAddress = orders[0]?.address_snapshot || null;
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-6 sm:space-y-8 w-full max-w-full overflow-x-clip min-w-0">
       {/* Account Profile Header Card */}
-      <div className="p-6 sm:p-8 rounded-3xl bg-slate-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-6 shadow-xl">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-emerald-400 text-lg font-bold shrink-0">
+      <div className="p-4 sm:p-8 rounded-2xl sm:rounded-3xl bg-slate-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6 shadow-xl">
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-emerald-400 text-base sm:text-lg font-bold shrink-0">
             {displayName.charAt(0).toUpperCase()}
           </div>
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight">{displayName}</h1>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-lg sm:text-2xl font-bold tracking-tight truncate">{displayName}</h1>
+              <span className="px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-semibold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 shrink-0">
                 Verified Customer
               </span>
             </div>
-            <p className="text-xs text-white/70 mt-1 flex flex-wrap items-center gap-3">
-              {user.email && <span>{user.email}</span>}
+            <p className="text-2xs sm:text-xs text-white/70 mt-0.5 flex flex-wrap items-center gap-2 truncate">
+              {user.email && <span className="truncate">{user.email}</span>}
               {user.phone && <span>· {user.phone}</span>}
             </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-2.5 w-full sm:w-auto shrink-0">
           <Link
             href="/track-order"
-            className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-sm"
+            className="px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 shadow-sm"
           >
             <Truck className="w-3.5 h-3.5" />
             <span>Track Live Order</span>
@@ -182,7 +182,7 @@ export default function AccountPage() {
           <button
             type="button"
             onClick={handleSignOut}
-            className="px-4 py-2.5 rounded-xl bg-rose-600/25 hover:bg-rose-600/40 text-rose-200 border border-rose-500/30 text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
+            className="px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-rose-600/25 hover:bg-rose-600/40 text-rose-200 border border-rose-500/30 text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span>Sign Out</span>
@@ -190,75 +190,81 @@ export default function AccountPage() {
         </div>
       </div>
 
-      {/* Tabs Navigation */}
-      <div className="flex items-center gap-6 border-b border-border pb-1 overflow-x-auto whitespace-nowrap scrollbar-none">
+      {/* Tabs Navigation (Zero Horizontal Overflow, Compact on Mobile) */}
+      <div className="flex items-center gap-1.5 sm:gap-4 border-b border-border pb-1 overflow-x-auto whitespace-nowrap scrollbar-none w-full max-w-full min-w-0">
         <button
           onClick={() => setActiveTab('orders')}
-          className={`pb-3 text-xs font-bold transition-colors flex items-center gap-2 border-b-2 -mb-[5px] ${
+          className={`px-3 py-2 sm:pb-3 text-xs font-bold transition-colors flex items-center gap-1.5 rounded-xl sm:rounded-none sm:border-b-2 sm:-mb-[5px] shrink-0 ${
             activeTab === 'orders'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted hover:text-text'
+              ? 'bg-primary text-white sm:bg-transparent sm:border-primary sm:text-primary shadow-xs sm:shadow-none'
+              : 'bg-surface-alt sm:bg-transparent border border-border sm:border-transparent text-muted hover:text-text'
           }`}
         >
-          <ShoppingBag className="w-4 h-4" />
-          <span>My Orders ({orders.length})</span>
+          <ShoppingBag className="w-3.5 h-3.5" />
+          <span>Orders ({orders.length})</span>
         </button>
 
         <button
           onClick={() => setActiveTab('wishlist')}
-          className={`pb-3 text-xs font-bold transition-colors flex items-center gap-2 border-b-2 -mb-[5px] cursor-pointer ${
+          className={`px-3 py-2 sm:pb-3 text-xs font-bold transition-colors flex items-center gap-1.5 rounded-xl sm:rounded-none sm:border-b-2 sm:-mb-[5px] shrink-0 cursor-pointer ${
             activeTab === 'wishlist'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted hover:text-text'
+              ? 'bg-primary text-white sm:bg-transparent sm:border-primary sm:text-primary shadow-xs sm:shadow-none'
+              : 'bg-surface-alt sm:bg-transparent border border-border sm:border-transparent text-muted hover:text-text'
           }`}
         >
-          <Heart className="w-4 h-4 text-rose-500" />
-          <span>Saved Wishlist ({wishlistItems.length})</span>
+          <Heart className="w-3.5 h-3.5 text-rose-500" />
+          <span>Wishlist ({wishlistItems.length})</span>
         </button>
 
         <button
           onClick={() => setActiveTab('address')}
-          className={`pb-3 text-xs font-bold transition-colors flex items-center gap-2 border-b-2 -mb-[5px] ${
+          className={`px-3 py-2 sm:pb-3 text-xs font-bold transition-colors flex items-center gap-1.5 rounded-xl sm:rounded-none sm:border-b-2 sm:-mb-[5px] shrink-0 ${
             activeTab === 'address'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted hover:text-text'
+              ? 'bg-primary text-white sm:bg-transparent sm:border-primary sm:text-primary shadow-xs sm:shadow-none'
+              : 'bg-surface-alt sm:bg-transparent border border-border sm:border-transparent text-muted hover:text-text'
           }`}
         >
-          <MapPin className="w-4 h-4" />
-          <span>Default Shipping Address</span>
+          <MapPin className="w-3.5 h-3.5" />
+          <span className="sm:inline hidden">Default Shipping Address</span>
+          <span className="sm:hidden inline">Address</span>
         </button>
 
         <button
           onClick={() => setActiveTab('support')}
-          className={`pb-3 text-xs font-bold transition-colors flex items-center gap-2 border-b-2 -mb-[5px] ${
+          className={`px-3 py-2 sm:pb-3 text-xs font-bold transition-colors flex items-center gap-1.5 rounded-xl sm:rounded-none sm:border-b-2 sm:-mb-[5px] shrink-0 ${
             activeTab === 'support'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted hover:text-text'
+              ? 'bg-primary text-white sm:bg-transparent sm:border-primary sm:text-primary shadow-xs sm:shadow-none'
+              : 'bg-surface-alt sm:bg-transparent border border-border sm:border-transparent text-muted hover:text-text'
           }`}
         >
-          <Phone className="w-4 h-4" />
-          <span>Factory Support & Warranty</span>
+          <Phone className="w-3.5 h-3.5" />
+          <span className="sm:inline hidden">Factory Support & Warranty</span>
+          <span className="sm:hidden inline">Support</span>
         </button>
       </div>
 
       {/* Tab 1: Orders History */}
       {activeTab === 'orders' && (
-        <div className="space-y-6">
+        <div className="space-y-6 w-full max-w-full">
           {orders.length === 0 ? (
-            <div className="py-16 text-center space-y-3 bg-surface-alt rounded-3xl border border-border">
-              <Package className="w-12 h-12 text-muted mx-auto" />
-              <h3 className="text-sm font-bold text-text">No Orders Found Yet</h3>
-              <p className="text-xs text-muted max-w-sm mx-auto">
-                You haven&apos;t placed any orders yet. Explore our genuine factory-direct denim collection.
-              </p>
-              <div className="pt-2">
-                <Link
-                  href="/products"
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-white text-xs font-bold uppercase tracking-wider"
-                >
-                  <span>Start Shopping</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
+            <div className="py-12 sm:py-16 px-4 text-center bg-surface-alt rounded-2xl sm:rounded-3xl border border-border w-full">
+              <div className="max-w-xs sm:max-w-sm mx-auto space-y-3 flex flex-col items-center justify-center">
+                <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary mb-1">
+                  <Package className="w-7 h-7" />
+                </div>
+                <h3 className="text-sm sm:text-base font-extrabold text-text">No Orders Found Yet</h3>
+                <p className="text-xs text-muted leading-relaxed">
+                  You haven&apos;t placed any orders yet. Explore our genuine factory-direct denim collection.
+                </p>
+                <div className="pt-2">
+                  <Link
+                    href="/products"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-white text-xs font-bold uppercase tracking-wider hover:bg-primary-hover shadow-xs active:scale-95 transition-transform"
+                  >
+                    <span>Start Shopping</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
               </div>
             </div>
           ) : (
@@ -378,22 +384,26 @@ export default function AccountPage() {
 
       {/* Tab 2: Saved Wishlist */}
       {activeTab === 'wishlist' && (
-        <div className="space-y-4">
+        <div className="space-y-4 w-full max-w-full">
           {wishlistItems.length === 0 ? (
-            <div className="py-16 text-center space-y-3 bg-surface-alt rounded-3xl border border-border">
-              <Heart className="w-12 h-12 text-rose-300 mx-auto" />
-              <h3 className="text-sm font-bold text-text">Your Wishlist is Empty</h3>
-              <p className="text-xs text-muted max-w-sm mx-auto">
-                Save your favorite TOLAND jeans and jackets while browsing to pick sizes and order later.
-              </p>
-              <div className="pt-2">
-                <Link
-                  href="/products"
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-white text-xs font-bold uppercase tracking-wider"
-                >
-                  <span>Browse Denim Catalog</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
+            <div className="py-12 sm:py-16 px-4 text-center bg-surface-alt rounded-2xl sm:rounded-3xl border border-border w-full">
+              <div className="max-w-xs sm:max-w-sm mx-auto space-y-3 flex flex-col items-center justify-center">
+                <div className="w-14 h-14 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-500 mb-1">
+                  <Heart className="w-7 h-7 fill-rose-500" />
+                </div>
+                <h3 className="text-sm sm:text-base font-extrabold text-text">Your Wishlist is Empty</h3>
+                <p className="text-xs text-muted leading-relaxed">
+                  Save your favorite TOLAND jeans and jackets while browsing to pick sizes and order later.
+                </p>
+                <div className="pt-2">
+                  <Link
+                    href="/products"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-white text-xs font-bold uppercase tracking-wider hover:bg-primary-hover shadow-xs active:scale-95 transition-transform"
+                  >
+                    <span>Browse Denim Catalog</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
               </div>
             </div>
           ) : (

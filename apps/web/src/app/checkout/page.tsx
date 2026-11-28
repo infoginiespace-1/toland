@@ -201,7 +201,7 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8 w-full max-w-full overflow-x-clip min-w-0">
       <div className="flex items-center justify-between pb-4 border-b border-border">
         <div>
           <h1 className="text-2xl sm:text-3xl font-black text-text tracking-tight">Express Checkout</h1>

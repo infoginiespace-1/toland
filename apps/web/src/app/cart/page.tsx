@@ -78,7 +78,7 @@ export default function CartPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8 w-full max-w-full overflow-x-clip min-w-0">
       <div className="flex items-center justify-between pb-4 border-b border-border">
         <div>
           <h1 className="text-2xl sm:text-3xl font-black text-text tracking-tight">Shopping Bag</h1>
@@ -124,9 +124,9 @@ export default function CartPage() {
           {items.map((item) => (
             <div
               key={item.variantId}
-              className="p-4 sm:p-5 rounded-2xl bg-surface-alt border border-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs"
+              className="p-3.5 sm:p-5 rounded-2xl bg-surface-alt border border-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 shadow-2xs"
             >
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3 sm:gap-4 min-w-0 w-full sm:w-auto">
                 <div className="w-16 h-20 rounded-xl bg-surface border border-border flex items-center justify-center text-primary shrink-0 overflow-hidden">
                   {item.image ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -136,30 +136,30 @@ export default function CartPage() {
                   )}
                 </div>
 
-                <div className="space-y-1">
+                <div className="space-y-1 min-w-0 flex-1">
                   <Link
                     href={`/products/${item.slug}`}
-                    className="text-sm font-bold text-text hover:text-primary transition-colors line-clamp-1"
+                    className="text-xs sm:text-sm font-bold text-text hover:text-primary transition-colors line-clamp-1"
                   >
                     {item.name}
                   </Link>
 
-                  <div className="flex flex-wrap gap-2 text-3xs font-mono font-semibold text-muted">
-                    <span className="px-2 py-0.5 rounded bg-surface border border-border">
+                  <div className="flex flex-wrap gap-1.5 text-4xs sm:text-3xs font-mono font-semibold text-muted">
+                    <span className="px-1.5 py-0.5 rounded bg-surface border border-border">
                       Size: {item.size}
                     </span>
-                    <span className="px-2 py-0.5 rounded bg-surface border border-border">
+                    <span className="px-1.5 py-0.5 rounded bg-surface border border-border">
                       Fit: {item.fit}
                     </span>
-                    <span className="px-2 py-0.5 rounded bg-surface border border-border">
+                    <span className="px-1.5 py-0.5 rounded bg-surface border border-border">
                       SKU: {item.sku}
                     </span>
                   </div>
 
-                  <div className="flex items-baseline gap-2 pt-1">
-                    <span className="text-sm font-black text-text">₹{item.price}</span>
+                  <div className="flex items-baseline gap-2 pt-0.5">
+                    <span className="text-sm font-black text-text font-mono">₹{item.price}</span>
                     {item.mrp && item.mrp > item.price && (
-                      <span className="text-3xs text-muted line-through">MRP ₹{item.mrp}</span>
+                      <span className="text-3xs text-muted line-through font-mono">MRP ₹{item.mrp}</span>
                     )}
                   </div>
                 </div>

@@ -186,25 +186,25 @@ export default async function HomePage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
           {products && products.length > 0 ? (
             products.map((product: any) => {
               const discountPercent = product.mrp
                 ? Math.round(((product.mrp - product.base_price) / product.mrp) * 100)
                 : 0;
               const variants = product.variants || [];
-              const availableSizes = Array.from(new Set(variants.map((v: any) => v.size))).slice(0, 5);
+              const availableSizes = Array.from(new Set(variants.map((v: any) => v.size))).slice(0, 4);
 
               return (
                 <div
                   key={product.id}
-                  className="group rounded-xl bg-white border border-border hover:border-slate-300 hover:shadow-card-hover transition-all flex flex-col justify-between overflow-hidden"
+                  className="group rounded-2xl bg-white border border-border hover:border-slate-300 hover:shadow-card-hover transition-all flex flex-col justify-between overflow-hidden shadow-2xs"
                 >
                   {/* Image Visual Container */}
-                  <div className="relative aspect-4/5 bg-surface-alt border-b border-border overflow-hidden">
+                  <div className="relative aspect-[3/4] sm:aspect-4/5 bg-surface-alt border-b border-border overflow-hidden">
                     {/* Badge */}
                     {discountPercent > 0 && (
-                      <span className="absolute top-3 left-3 z-10 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-danger text-white shadow-subtle pointer-events-none">
+                      <span className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10 px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold uppercase bg-danger text-white shadow-subtle pointer-events-none">
                         {discountPercent}% OFF
                       </span>
                     )}
@@ -219,7 +219,7 @@ export default async function HomePage() {
                         image: product.images?.[0]?.path,
                         category: product.category?.name,
                       }}
-                      className="absolute top-3 right-3 z-20"
+                      className="absolute top-2 right-2 sm:top-3 sm:right-3 z-20"
                     />
 
                     <Link
@@ -235,35 +235,35 @@ export default async function HomePage() {
                           loading="lazy"
                         />
                       ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-gradient-to-br from-surface-alt to-white">
-                          <div className="w-16 h-16 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary mb-3 group-hover:scale-105 transition-transform">
-                            <Layers className="w-8 h-8" />
+                        <div className="w-full h-full flex flex-col items-center justify-center p-4 sm:p-6 text-center bg-gradient-to-br from-surface-alt to-white">
+                          <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary mb-2 sm:mb-3 group-hover:scale-105 transition-transform">
+                            <Layers className="w-6 h-6 sm:w-8 sm:h-8" />
                           </div>
-                          <span className="text-xs font-semibold text-text line-clamp-1">{product.name}</span>
-                          <span className="text-[11px] text-muted font-normal mt-1">100% Ring-Spun Cotton</span>
+                          <span className="text-3xs sm:text-xs font-semibold text-text line-clamp-1">{product.name}</span>
+                          <span className="text-[9px] sm:text-[11px] text-muted font-normal mt-0.5 sm:mt-1">100% Cotton</span>
                         </div>
                       )}
                     </Link>
                   </div>
 
                   {/* Details */}
-                  <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+                  <div className="p-2.5 sm:p-4 flex-1 flex flex-col justify-between space-y-2 sm:space-y-3">
                     <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-primary block mb-0.5">
+                      <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-primary block mb-0.5 truncate">
                         {product.category?.name || 'Denim'}
                       </span>
                       <Link href={`/products/${product.slug}`} className="block">
-                        <h3 className="text-sm font-semibold text-text line-clamp-1 group-hover:text-primary transition-colors">
+                        <h3 className="text-xs sm:text-sm font-semibold text-text line-clamp-1 group-hover:text-primary transition-colors">
                           {product.name}
                         </h3>
                       </Link>
 
                       {/* Sizes */}
-                      <div className="flex flex-wrap gap-1 mt-2">
+                      <div className="flex flex-wrap gap-1 mt-1.5 sm:mt-2">
                         {availableSizes.map((size: any) => (
                           <span
                             key={size}
-                            className="px-1.5 py-0.5 rounded bg-surface-alt border border-border text-[11px] font-mono font-medium text-muted"
+                            className="px-1.5 py-0.5 rounded bg-surface-alt border border-border text-[9px] sm:text-[11px] font-mono font-medium text-muted"
                           >
                             {size}
                           </span>
@@ -271,19 +271,19 @@ export default async function HomePage() {
                       </div>
                     </div>
 
-                    <div className="pt-3 border-t border-border flex items-center justify-between">
-                      <div>
-                        <div className="text-base font-bold text-slate-900">₹{product.base_price}</div>
+                    <div className="pt-2 sm:pt-3 border-t border-border flex items-center justify-between gap-1">
+                      <div className="min-w-0">
+                        <div className="text-sm sm:text-base font-bold text-slate-900 truncate">₹{product.base_price}</div>
                         {product.mrp && (
-                          <div className="text-xs text-muted line-through">MRP ₹{product.mrp}</div>
+                          <div className="text-[10px] sm:text-xs text-muted line-through truncate">MRP ₹{product.mrp}</div>
                         )}
                       </div>
 
                       <Link
                         href={`/products/${product.slug}`}
-                        className="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-medium hover:bg-slate-800 transition-colors shadow-subtle"
+                        className="px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg bg-slate-900 text-white text-[10px] sm:text-xs font-medium hover:bg-slate-800 transition-colors shadow-subtle shrink-0"
                       >
-                        View Details
+                        View
                       </Link>
                     </div>
                   </div>

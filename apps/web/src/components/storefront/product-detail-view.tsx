@@ -442,7 +442,7 @@ export function ProductDetailView({
 
           {/* Interactive Thumbnails Gallery */}
           {images && images.length > 1 && (
-            <div className="grid grid-cols-4 gap-3">
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none sm:grid sm:grid-cols-4 sm:gap-3">
               {images.map((img: any, idx: number) => {
                 const isActive = idx === activeImageIndex;
                 const isThumbVideo = isVideoUrl(img.path, img.media_type);
@@ -453,7 +453,7 @@ export function ProductDetailView({
                     key={img.id || idx}
                     type="button"
                     onClick={() => setActiveImageIndex(idx)}
-                    className={`relative aspect-square rounded-2xl overflow-hidden border-2 transition-all cursor-pointer ${
+                    className={`relative w-16 h-16 sm:w-auto sm:aspect-square shrink-0 rounded-xl sm:rounded-2xl overflow-hidden border-2 transition-all cursor-pointer ${
                       isActive
                         ? 'border-primary ring-2 ring-primary/20 shadow-sm scale-102'
                         : 'border-border hover:border-primary/50 opacity-70 hover:opacity-100'
@@ -486,25 +486,6 @@ export function ProductDetailView({
               })}
             </div>
           )}
-
-          {/* Value Highlights */}
-          <div className="grid grid-cols-3 gap-3 text-center text-xs text-muted">
-            <div className="p-3 rounded-xl bg-surface-alt border border-border">
-              <Truck className="w-4 h-4 mx-auto text-primary mb-1" />
-              <span className="font-semibold text-text">Free Shipping</span>
-              <div className="text-[11px] text-muted">Orders &gt; ₹999</div>
-            </div>
-            <div className="p-3 rounded-xl bg-surface-alt border border-border">
-              <RotateCcw className="w-4 h-4 mx-auto text-primary mb-1" />
-              <span className="font-semibold text-text">7-Day Exchange</span>
-              <div className="text-[11px] text-muted">Doorstep pickup</div>
-            </div>
-            <div className="p-3 rounded-xl bg-surface-alt border border-border">
-              <ShieldCheck className="w-4 h-4 mx-auto text-primary mb-1" />
-              <span className="font-semibold text-text">Direct Factory</span>
-              <div className="text-[11px] text-muted">100% Cotton</div>
-            </div>
-          </div>
         </div>
 
         {/* Right: Specifications, Variant Selectors & Buying Actions */}
@@ -728,6 +709,25 @@ export function ProductDetailView({
               <Phone className="w-4 h-4" />
               <span>Inquire via WhatsApp Desk</span>
             </a>
+
+            {/* Value Highlights (Direct Factory, Free Shipping, 7-Day Exchange) */}
+            <div className="grid grid-cols-3 gap-2 sm:gap-3 text-center text-xs text-muted pt-1">
+              <div className="p-2 sm:p-2.5 rounded-xl bg-surface-alt border border-border">
+                <Truck className="w-3.5 h-3.5 sm:w-4 sm:h-4 mx-auto text-primary mb-0.5 sm:mb-1" />
+                <span className="font-semibold text-text text-[10px] sm:text-xs block truncate">Free Shipping</span>
+                <div className="text-[9px] sm:text-[11px] text-muted truncate">Orders &gt; ₹999</div>
+              </div>
+              <div className="p-2 sm:p-2.5 rounded-xl bg-surface-alt border border-border">
+                <RotateCcw className="w-3.5 h-3.5 sm:w-4 sm:h-4 mx-auto text-primary mb-0.5 sm:mb-1" />
+                <span className="font-semibold text-text text-[10px] sm:text-xs block truncate">7-Day Return</span>
+                <div className="text-[9px] sm:text-[11px] text-muted truncate">Doorstep pickup</div>
+              </div>
+              <div className="p-2 sm:p-2.5 rounded-xl bg-surface-alt border border-border">
+                <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 mx-auto text-primary mb-0.5 sm:mb-1" />
+                <span className="font-semibold text-text text-[10px] sm:text-xs block truncate">Direct Mill</span>
+                <div className="text-[9px] sm:text-[11px] text-muted truncate">100% Cotton</div>
+              </div>
+            </div>
           </div>
 
           {/* Pincode & Delivery Date Checker */}
