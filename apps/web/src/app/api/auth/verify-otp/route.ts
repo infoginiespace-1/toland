@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { findVerifiedUserByPhone, normalizeIndianPhone } from '@/lib/auth-helpers';
 
 export async function POST(request: Request) {
   try {
@@ -11,21 +12,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Phone number and OTP are required' }, { status: 400 });
     }
 
-    // Standardize Indian phone number format
-    const cleaned = rawPhone.replace(/\D/g, '');
-    let formattedPhone = '';
-    if (cleaned.length === 10) {
-      formattedPhone = `+91${cleaned}`;
-    } else if (cleaned.startsWith('91') && cleaned.length === 12) {
-      formattedPhone = `+${cleaned}`;
-    } else {
-      formattedPhone = `+91${cleaned.slice(-10)}`;
+    const phoneInfo = normalizeIndianPhone(rawPhone);
+    if (!phoneInfo.valid) {
+      return NextResponse.json(
+        { error: 'Please enter a valid 10-digit Indian mobile number' },
+        { status: 400 }
+      );
     }
 
+    const formattedPhone = phoneInfo.canonical;
+    const last10 = phoneInfo.last10;
     const supabaseAdmin = createAdminClient();
 
     // 1. Verify OTP from phone_otps table
-    const { data: otpRecords, error: otpError } = await (supabaseAdmin as any)
+    const { data: otpRecords } = await (supabaseAdmin as any)
       .from('phone_otps')
       .select('*')
       .eq('phone', formattedPhone)
@@ -35,7 +35,6 @@ export async function POST(request: Request) {
       .limit(1);
 
     const isValidOtp = Boolean(otpRecords && otpRecords.length > 0);
-
     if (!isValidOtp) {
       return NextResponse.json(
         { error: 'Invalid or expired 6-digit OTP code. Please check and try again.' },
@@ -43,68 +42,81 @@ export async function POST(request: Request) {
       );
     }
 
-    // Delete used OTP
-    if (otpRecords && otpRecords.length > 0) {
-      await (supabaseAdmin as any).from('phone_otps').delete().eq('id', otpRecords[0].id);
-    }
+    await (supabaseAdmin as any).from('phone_otps').delete().eq('id', otpRecords[0].id);
 
-    // 2. Check if user is in admin allowlist
-    const last10 = cleaned.slice(-10);
+    // 2. Check if phone is in admin allowlist
     const { data: allowlistRows } = await (supabaseAdmin as any)
       .from('admin_allowlist')
       .select('role')
-      .or(`phone.eq.${formattedPhone},phone.eq.${last10},phone.eq.+91${last10}`);
+      .or(`phone.eq.${formattedPhone},phone.eq.${last10},phone.eq.${phoneInfo.authDigits}`);
 
-    const isAllowlisted = allowlistRows && allowlistRows.length > 0;
-    const assignedRole = isAllowlisted ? allowlistRows[0].role || 'admin' : 'customer';
+    const isAllowlisted = Boolean(allowlistRows && allowlistRows.length > 0);
+    const allowlistedRole = isAllowlisted ? allowlistRows[0].role || 'admin' : null;
 
-    // 3. Ensure user exists in Supabase Auth
-    const userEmail = `${last10}@phone.toland.in`;
-    const { data: userList } = await supabaseAdmin.auth.admin.listUsers();
-    let user = userList?.users?.find(
-      (u) => u.email === userEmail || u.phone === formattedPhone
-    );
+    // 3. Look up ANY existing user owning this mobile number (email-signup OR phone-signup)
+    let targetUser = await findVerifiedUserByPhone(formattedPhone);
+    let targetEmail = targetUser?.email || `${last10}@phone.toland.in`;
+    let assignedRole = allowlistedRole || targetUser?.role || 'customer';
 
-    if (!user) {
+    if (!targetUser) {
+      // Create brand new single account for this phone (trigger creates profile & CRM row)
       const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
-        email: userEmail,
+        email: targetEmail,
         phone: formattedPhone,
         email_confirm: true,
         phone_confirm: true,
-        user_metadata: { phone: formattedPhone, role: assignedRole },
+        user_metadata: {
+          name: isAllowlisted ? 'TOLAND Admin' : 'Customer',
+          phone: formattedPhone,
+          role: assignedRole,
+        },
         app_metadata: { role: assignedRole },
       });
 
-      if (createErr) {
-        console.error('Error creating user:', createErr);
-        throw createErr;
+      if (createErr || !newUser?.user) {
+        console.error('Error creating phone user:', createErr);
+        throw createErr || new Error('Failed to create user account');
       }
-      user = newUser.user;
+
+      targetUser = {
+        id: newUser.user.id,
+        email: targetEmail,
+        phone: formattedPhone,
+        role: assignedRole,
+        name: isAllowlisted ? 'TOLAND Admin' : 'Customer',
+      };
     } else {
-      // Update app_metadata with latest assigned role
-      await supabaseAdmin.auth.admin.updateUserById(user.id, {
+      // Link & confirm phone on the existing single account (never create a duplicate)
+      await supabaseAdmin.auth.admin.updateUserById(targetUser.id, {
+        phone: formattedPhone,
+        phone_confirm: true,
         app_metadata: { role: assignedRole },
-        user_metadata: { phone: formattedPhone, role: assignedRole },
+        user_metadata: {
+          name: targetUser.name,
+          phone: formattedPhone,
+          role: assignedRole,
+        },
       });
+
+      await (supabaseAdmin as any)
+        .from('profiles')
+        .upsert(
+          {
+            id: targetUser.id,
+            phone: formattedPhone,
+            name: targetUser.name,
+            email: targetEmail,
+            role: assignedRole,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'id' }
+        );
     }
 
-    // 4. Ensure profile row exists in public.profiles
-    await (supabaseAdmin as any).from('profiles').upsert(
-      {
-        id: user.id,
-        phone: formattedPhone,
-        name: isAllowlisted ? 'TOLAND Admin' : 'Customer',
-        email: userEmail,
-        role: assignedRole,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'id' }
-    );
-
-    // 5. Generate secure token hash for client session establishment
+    // 4. Generate magiclink token hash for the matched single account
     const { data: linkData, error: linkErr } = await supabaseAdmin.auth.admin.generateLink({
       type: 'magiclink',
-      email: userEmail,
+      email: targetEmail,
     });
 
     if (linkErr || !linkData?.properties?.hashed_token) {

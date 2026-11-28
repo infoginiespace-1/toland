@@ -39,6 +39,9 @@ function LoginFormContent() {
 
   // Email Auth states (Sign In vs Sign Up)
   const [emailMode, setEmailMode] = useState<'signin' | 'signup'>('signin');
+  const [emailSignupStep, setEmailSignupStep] = useState<'form' | 'otp'>('form');
+  const [emailOtp, setEmailOtp] = useState('');
+  const [emailCountdown, setEmailCountdown] = useState(0);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -53,18 +56,25 @@ function LoginFormContent() {
 
   // Status states
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(searchParams.get('error'));
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const supabase = createClient();
 
-  // Resend countdown timer for WhatsApp OTP
+  // Resend countdown timer for WhatsApp & Email OTP
   useEffect(() => {
     if (countdown > 0) {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
       return () => clearTimeout(timer);
     }
   }, [countdown]);
+
+  useEffect(() => {
+    if (emailCountdown > 0) {
+      const timer = setTimeout(() => setEmailCountdown(emailCountdown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [emailCountdown]);
 
   // Clean phone number format (+91 prefix if not present)
   const formatPhoneNumber = (input: string) => {
@@ -212,13 +222,44 @@ function LoginFormContent() {
     }
   };
 
+  const completePostAuthRedirect = (user: any, targetEmail: string) => {
+    const role =
+      (user?.app_metadata?.role as string) ||
+      (user?.user_metadata?.role as string) ||
+      'customer';
+    if (
+      role === 'admin' ||
+      role === 'staff' ||
+      targetEmail.toLowerCase() === 'dawoodhussain504@gmail.com' ||
+      targetEmail.toLowerCase() === 'info.giniespace@gmail.com'
+    ) {
+      router.push('/admin');
+    } else {
+      router.push(redirectTo);
+    }
+    router.refresh();
+  };
+
   const handleEmailSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccessMsg(null);
 
-    if (!email || !password) {
-      setError('Please fill in all required fields.');
+    const trimmedEmail = email.trim().toLowerCase();
+    const formattedPhone = formatPhoneNumber(signupPhone);
+
+    if (!fullName.trim() || fullName.trim().length < 2) {
+      setError('Please enter your full name (minimum 2 characters).');
+      return;
+    }
+
+    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(trimmedEmail)) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+
+    if (!/^\+91[6-9]\d{9}$/.test(formattedPhone)) {
+      setError('Please enter a valid 10-digit Indian mobile number.');
       return;
     }
 
@@ -229,51 +270,154 @@ function LoginFormContent() {
 
     setLoading(true);
     try {
-      // 1. Create confirmed user via server-side API (bypasses unconfirmed email / SMTP failure roadblocks)
-      const res = await fetch('/api/auth/signup', {
+      // 1. Pre-check email & mobile uniqueness globally across all registered users
+      const preRes = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: email.trim(),
+          email: trimmedEmail,
           password,
           name: fullName.trim(),
-          phone: signupPhone.trim(),
+          phone: formattedPhone,
         }),
       });
 
-      const resData = await res.json();
-      if (!res.ok) {
-        throw new Error(resData.error || 'Registration failed');
+      const preData = await preRes.json();
+      if (!preRes.ok) {
+        throw new Error(preData.error || 'Registration validation failed');
       }
 
-      // 2. Automatically sign in with the newly created & confirmed credentials
-      const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
+      // 2. Initiate Supabase Auth Signup so OTP/Verification email is sent by Supabase
+      const origin =
+        typeof window !== 'undefined' ? window.location.origin : 'https://toland-web.vercel.app';
+      const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
+        email: preData.email,
         password,
+        options: {
+          emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(redirectTo)}`,
+          data: {
+            name: preData.name,
+            phone: preData.phone,
+            role: 'customer',
+          },
+        },
       });
 
-      if (signInErr) {
-        setSuccessMsg('Account created successfully! Please sign in with your email & password.');
-        setEmailMode('signin');
-      } else {
-        setSuccessMsg('Account created successfully! Redirecting...');
-        const user = signInData.user;
-        const role = (user?.app_metadata?.role as string) || (user?.user_metadata?.role as string) || 'customer';
-        if (
-          role === 'admin' || 
-          role === 'staff' || 
-          email.toLowerCase() === 'dawoodhussain504@gmail.com' ||
-          email.toLowerCase() === 'info.giniespace@gmail.com'
-        ) {
-          router.push('/admin');
-        } else {
-          router.push(redirectTo);
-        }
-        router.refresh();
+      if (signUpErr) {
+        throw signUpErr;
       }
+
+      if (signUpData?.user?.identities && signUpData.user.identities.length === 0) {
+        throw new Error('An account with this email already exists. Please Sign In instead.');
+      }
+
+      if (signUpData?.session) {
+        setSuccessMsg('Account verified and created! Redirecting...');
+        completePostAuthRedirect(signUpData.session.user, preData.email);
+        return;
+      }
+
+      // 3. Require Supabase Auth Email OTP verification before account activation
+      setEmail(preData.email);
+      setSignupPhone(preData.phone);
+      setEmailSignupStep('otp');
+      setEmailCountdown(60);
+      setEmailOtp('');
+      setSuccessMsg(
+        `Verification code sent to ${preData.email} via Supabase Auth. Verify your email below to activate your account.`
+      );
     } catch (err: any) {
       console.error('Email Sign Up Error:', err);
       setError(err.message || 'Registration failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyEmailOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccessMsg(null);
+
+    const token = emailOtp.trim();
+    if (!/^\d{6,8}$/.test(token)) {
+      setError('Please enter the 6 to 8-digit verification code sent to your email.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const trimmedEmail = email.trim().toLowerCase();
+      const { data, error: verifyErr } = await supabase.auth.verifyOtp({
+        email: trimmedEmail,
+        token,
+        type: 'signup',
+      });
+
+      if (verifyErr) {
+        throw verifyErr;
+      }
+
+      const { data: refreshed } = await supabase.auth.refreshSession();
+      const verifiedUser = refreshed?.user || data.user;
+
+      setSuccessMsg('Email verified & account activated! Redirecting...');
+      completePostAuthRedirect(verifiedUser, trimmedEmail);
+    } catch (err: any) {
+      console.error('Email OTP Verify Error:', err);
+      setError(err.message || 'Invalid or expired email verification code. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendEmailOtp = async () => {
+    if (emailCountdown > 0) return;
+    setError(null);
+    setSuccessMsg(null);
+    setLoading(true);
+    try {
+      const trimmedEmail = email.trim().toLowerCase();
+      const origin =
+        typeof window !== 'undefined' ? window.location.origin : 'https://toland-web.vercel.app';
+      const { error: resendErr } = await supabase.auth.resend({
+        type: 'signup',
+        email: trimmedEmail,
+        options: {
+          emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(redirectTo)}`,
+        },
+      });
+      if (resendErr) throw resendErr;
+      setEmailCountdown(60);
+      setSuccessMsg(`A fresh verification code has been sent to ${trimmedEmail}.`);
+    } catch (err: any) {
+      console.error('Resend Email OTP Error:', err);
+      setError(err.message || 'Failed to resend verification email. Please wait a minute and retry.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCheckEmailConfirmedViaLink = async () => {
+    setError(null);
+    setSuccessMsg(null);
+    setLoading(true);
+    try {
+      const trimmedEmail = email.trim().toLowerCase();
+      const { data, error: signInErr } = await supabase.auth.signInWithPassword({
+        email: trimmedEmail,
+        password,
+      });
+      if (signInErr) {
+        if (signInErr.message?.toLowerCase().includes('not confirmed')) {
+          throw new Error('Your email is still not verified yet. Please enter the OTP code or click the link in your email.');
+        }
+        throw signInErr;
+      }
+      setSuccessMsg('Email verified! Signing you in...');
+      completePostAuthRedirect(data.user, trimmedEmail);
+    } catch (err: any) {
+      setError(err.message || 'Could not confirm email status yet.');
     } finally {
       setLoading(false);
     }
@@ -585,6 +729,7 @@ function LoginFormContent() {
               type="button"
               onClick={() => {
                 setEmailMode('signin');
+                setEmailSignupStep('form');
                 setError(null);
                 setSuccessMsg(null);
               }}
@@ -603,6 +748,7 @@ function LoginFormContent() {
               type="button"
               onClick={() => {
                 setEmailMode('signup');
+                setEmailSignupStep('form');
                 setError(null);
                 setSuccessMsg(null);
               }}
@@ -711,8 +857,8 @@ function LoginFormContent() {
                 )}
               </button>
             </form>
-          ) : (
-            /* Email Sign Up Form */
+          ) : emailSignupStep === 'form' ? (
+            /* Email Sign Up Form (Step 1: Uniqueness Check + Supabase Email OTP) */
             <form onSubmit={handleEmailSignUp} className="space-y-4">
               <div>
                 <label htmlFor="fullName" className="block text-sm font-semibold text-text mb-1.5">
@@ -725,13 +871,14 @@ function LoginFormContent() {
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   required
+                  minLength={2}
                   className="block w-full px-3.5 py-2.5 rounded-lg border border-border bg-surface text-text placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
                 />
               </div>
 
               <div>
                 <label htmlFor="signupEmail" className="block text-sm font-semibold text-text mb-1.5">
-                  Email Address
+                  Email Address <span className="text-xs font-normal text-muted">(OTP required)</span>
                 </label>
                 <div className="relative rounded-md shadow-sm">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted">
@@ -752,7 +899,7 @@ function LoginFormContent() {
 
               <div>
                 <label htmlFor="signupPhone" className="block text-sm font-semibold text-text mb-1.5">
-                  Mobile Number <span className="text-xs font-normal text-muted">(for order WhatsApp alerts)</span>
+                  Mobile Number <span className="text-xs font-normal text-muted">(unique 10-digit Indian mobile)</span>
                 </label>
                 <div className="relative rounded-md shadow-sm">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted">
@@ -763,8 +910,9 @@ function LoginFormContent() {
                     id="signupPhone"
                     type="tel"
                     placeholder="98765 43210"
-                    value={signupPhone}
+                    value={signupPhone.replace(/^\+91/, '')}
                     onChange={(e) => setSignupPhone(e.target.value)}
+                    required
                     className="block w-full pl-16 pr-4 py-2.5 rounded-lg border border-border bg-surface text-text placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm font-medium"
                   />
                 </div>
@@ -799,6 +947,11 @@ function LoginFormContent() {
                 </div>
               </div>
 
+              <div className="p-3 bg-surface rounded-lg border border-border flex items-center gap-2.5 text-xs text-muted">
+                <ShieldCheck className="w-4 h-4 text-primary shrink-0" />
+                <span>Your account will only activate after verifying your email via Supabase Auth OTP.</span>
+              </div>
+
               <button
                 type="submit"
                 disabled={loading}
@@ -807,15 +960,104 @@ function LoginFormContent() {
                 {loading ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Creating Account...</span>
+                    <span>Sending Verification OTP...</span>
                   </>
                 ) : (
                   <>
                     <UserPlus className="w-4 h-4" />
-                    <span>Create Free Account</span>
+                    <span>Verify Email &amp; Create Account</span>
                   </>
                 )}
               </button>
+            </form>
+          ) : (
+            /* Email Sign Up Form (Step 2: Supabase Auth Email OTP Verification) */
+            <form onSubmit={handleVerifyEmailOtp} className="space-y-5">
+              <div className="p-3.5 bg-accent/10 border border-accent/25 rounded-lg space-y-1 text-xs text-text">
+                <div className="flex items-center gap-2 font-semibold text-primary">
+                  <Mail className="w-4 h-4 shrink-0" />
+                  <span>Supabase Auth Verification Required</span>
+                </div>
+                <p className="text-muted leading-relaxed">
+                  We sent an email verification code to <strong className="text-text">{email}</strong>. Enter the OTP code below (or click the confirmation link in your email) to activate your account.
+                </p>
+              </div>
+
+              <div>
+                <label htmlFor="emailOtp" className="block text-sm font-semibold text-text mb-2">
+                  Enter Email Verification OTP
+                </label>
+                <div className="relative rounded-md shadow-sm">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted">
+                    <KeyRound className="h-4 w-4" />
+                  </div>
+                  <input
+                    id="emailOtp"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={8}
+                    placeholder="Enter OTP code"
+                    value={emailOtp}
+                    onChange={(e) => setEmailOtp(e.target.value.replace(/\D/g, ''))}
+                    autoFocus
+                    required
+                    className="block w-full pl-10 pr-4 py-3 rounded-lg border border-border bg-surface text-text tracking-widest text-center text-xl font-bold placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent font-mono"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-primary hover:bg-primary-hover text-surface font-semibold shadow-sm transition-colors disabled:opacity-50 text-sm cursor-pointer"
+              >
+                {loading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Verifying Email OTP...</span>
+                  </>
+                ) : (
+                  <>
+                    <ShieldCheck className="w-4 h-4" />
+                    <span>Verify OTP &amp; Activate Account</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleCheckEmailConfirmedViaLink}
+                disabled={loading}
+                className="w-full py-2.5 px-4 rounded-lg border border-border bg-surface hover:bg-surface-alt text-xs font-semibold text-text transition-colors cursor-pointer"
+              >
+                Already clicked the confirmation link in email? Continue &rarr;
+              </button>
+
+              <div className="flex items-center justify-between text-xs pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmailSignupStep('form');
+                    setError(null);
+                    setSuccessMsg(null);
+                  }}
+                  className="text-muted hover:text-primary transition-colors cursor-pointer"
+                >
+                  Change email / mobile
+                </button>
+                {emailCountdown > 0 ? (
+                  <span className="text-muted">Resend in {emailCountdown}s</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleResendEmailOtp}
+                    disabled={loading}
+                    className="font-semibold text-primary hover:text-primary-hover transition-colors cursor-pointer"
+                  >
+                    Resend Email OTP
+                  </button>
+                )}
+              </div>
             </form>
           )}
         </div>
