@@ -1,7 +1,14 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import type { Database } from '@toland/shared';
-import { canRoleAccessPath, isTeamRole, resolveUserRole } from '@/lib/rbac';
+import {
+  canUserAccessAdminPath,
+  getFirstAllowedAdminPath,
+  isPrimarySuperAdmin,
+  isTeamRole,
+  resolveUserPermissions,
+  resolveUserRole,
+} from '@/lib/rbac';
 
 export async function updateSession(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -98,26 +105,51 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(url);
     }
 
-    const role = resolveUserRole(user);
+    // Fetch live profile role & permissions for instant enforcement of Super Admin changes
+    const { data: liveProfile } = await (supabase as any)
+      .from('profiles')
+      .select('role, permissions')
+      .eq('id', user.id)
+      .maybeSingle();
 
-    if (!isTeamRole(role)) {
+    const effectiveUser = {
+      email: user.email,
+      app_metadata: {
+        ...(user.app_metadata || {}),
+        ...(liveProfile?.role ? { role: liveProfile.role } : {}),
+        ...(liveProfile && liveProfile.permissions !== undefined
+          ? { permissions: liveProfile.permissions }
+          : {}),
+      },
+      user_metadata: user.user_metadata,
+    };
+
+    const role = resolveUserRole(effectiveUser);
+    const permissions = resolveUserPermissions(effectiveUser);
+    const superAdmin = isPrimarySuperAdmin(user);
+
+    if (!superAdmin && (!isTeamRole(role) || permissions.length === 0)) {
       const url = request.nextUrl.clone();
       url.pathname = '/';
       return NextResponse.redirect(url);
     }
 
-    if (!canRoleAccessPath(role, pathname, user)) {
-      const url = request.nextUrl.clone();
-      url.pathname = '/admin';
-      return NextResponse.redirect(url);
+    if (!canUserAccessAdminPath(effectiveUser, pathname)) {
+      const fallbackPath = getFirstAllowedAdminPath(effectiveUser) || '/';
+      if (fallbackPath !== pathname) {
+        const url = request.nextUrl.clone();
+        url.pathname = fallbackPath;
+        return NextResponse.redirect(url);
+      }
     }
   }
 
   // Auth route redirect if already logged in with team privileges
   if (isAuthRoute && pathname === '/auth/login' && user) {
     const role = resolveUserRole(user);
-    if (isTeamRole(role)) {
-      const redirectTo = request.nextUrl.searchParams.get('redirectTo') || '/admin';
+    if (isTeamRole(role) && resolveUserPermissions(user).length > 0) {
+      const firstPath = getFirstAllowedAdminPath(user) || '/admin';
+      const redirectTo = request.nextUrl.searchParams.get('redirectTo') || firstPath;
       return NextResponse.redirect(new URL(redirectTo, request.url));
     }
   }

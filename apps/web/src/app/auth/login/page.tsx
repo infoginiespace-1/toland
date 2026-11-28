@@ -5,7 +5,13 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { COMPANY_DETAILS } from '@toland/shared';
-import { isTeamRole, normalizeRoleValue, resolveUserRole } from '@/lib/rbac';
+import {
+  getFirstAllowedAdminPath,
+  isTeamRole,
+  normalizeRoleValue,
+  resolveUserPermissions,
+  resolveUserRole,
+} from '@/lib/rbac';
 import {
   MessageSquare,
   Mail,
@@ -164,7 +170,7 @@ function LoginFormContent() {
       }
 
       if (isTeamRole(normalizeRoleValue(data.role))) {
-        router.push('/admin');
+        router.push(data.redirectTo || '/admin');
       } else {
         router.push(redirectTo);
       }
@@ -202,8 +208,8 @@ function LoginFormContent() {
       }
 
       const user = data.user;
-      if (isTeamRole(resolveUserRole(user))) {
-        router.push('/admin');
+      if (isTeamRole(resolveUserRole(user)) && resolveUserPermissions(user).length > 0) {
+        router.push(getFirstAllowedAdminPath(user) || '/admin');
       } else {
         router.push(redirectTo);
       }
@@ -217,13 +223,14 @@ function LoginFormContent() {
   };
 
   const completePostAuthRedirect = (user: any, targetEmail: string) => {
-    const resolved = resolveUserRole({
+    const effective = {
       email: targetEmail || user?.email,
       app_metadata: user?.app_metadata,
       user_metadata: user?.user_metadata,
-    });
-    if (isTeamRole(resolved)) {
-      router.push('/admin');
+    };
+    const resolved = resolveUserRole(effective);
+    if (isTeamRole(resolved) && resolveUserPermissions(effective).length > 0) {
+      router.push(getFirstAllowedAdminPath(effective) || '/admin');
     } else {
       router.push(redirectTo);
     }

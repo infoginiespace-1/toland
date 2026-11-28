@@ -3,7 +3,12 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isSoleSuperAdmin } from '@/lib/admin-auth';
-import { isProtectedOwner, resolveUserRole } from '@/lib/rbac';
+import {
+  hasCustomPermissionOverride,
+  isProtectedOwner,
+  resolveUserPermissions,
+  resolveUserRole,
+} from '@/lib/rbac';
 import { normalizeIndianPhone } from '@/lib/auth-helpers';
 import { UsersManager, AdminUserItem } from '@/components/admin/users-manager';
 
@@ -38,14 +43,14 @@ export default async function AdminUsersPage() {
   const [profilesRes, ordersRes, allowlistRes] = await Promise.all([
     (supabaseAdmin as any)
       .from('profiles')
-      .select('id, phone, name, email, role, created_at'),
+      .select('id, phone, name, email, role, permissions, created_at'),
     (supabaseAdmin as any)
       .from('orders')
       .select('user_id, total')
       .not('user_id', 'is', null),
     (supabaseAdmin as any)
       .from('admin_allowlist')
-      .select('id, phone, email, role, notes, created_at')
+      .select('id, phone, email, role, permissions, notes, created_at')
       .order('created_at', { ascending: false }),
   ]);
 
@@ -72,14 +77,24 @@ export default async function AdminUsersPage() {
       const phoneNorm = rawPhone ? normalizeIndianPhone(rawPhone) : null;
       const displayPhone = phoneNorm?.valid ? phoneNorm.canonical : rawPhone;
 
-      const role = resolveUserRole({
+      const authLike = {
         email: rawEmail,
         app_metadata: u.app_metadata,
         user_metadata: {
           ...u.user_metadata,
           role: prof?.role || u.user_metadata?.role,
         },
-      });
+      };
+
+      const role = resolveUserRole(authLike);
+      const explicitCustom = prof?.permissions ?? u.app_metadata?.permissions;
+      const permissions = resolveUserPermissions(authLike, explicitCustom);
+      const isProt = isProtectedOwner(rawEmail, displayPhone);
+      const hasCustomPermissions =
+        !isProt &&
+        explicitCustom !== null &&
+        explicitCustom !== undefined &&
+        hasCustomPermissionOverride(role, permissions);
 
       const stats = orderStats.get(u.id) || { count: 0, spent: 0 };
 
@@ -93,9 +108,11 @@ export default async function AdminUsersPage() {
         authEmail: rawEmail,
         phone: displayPhone,
         role,
+        permissions,
+        hasCustomPermissions,
         emailConfirmed: Boolean(u.email_confirmed_at),
         phoneConfirmed: Boolean(u.phone_confirmed_at),
-        isProtected: isProtectedOwner(rawEmail, displayPhone),
+        isProtected: isProt,
         isSelf: u.id === currentUser.id,
         ordersCount: stats.count,
         totalSpent: stats.spent,

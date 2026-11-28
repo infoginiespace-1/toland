@@ -1,19 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { hasAdminPermission } from '@/lib/admin-auth';
+import { verifyApiPermission } from '@/lib/admin-auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!hasAdminPermission(user, 'catalog')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const auth = await verifyApiPermission('banners');
+    if (!auth.allowed) {
+      return NextResponse.json({ error: auth.status === 401 ? 'Unauthorized' : 'Forbidden: Missing permission' }, { status: auth.status });
     }
+    const supabase = createClient();
 
     const { data: banners, error } = await supabase
       .from('banners')
@@ -31,14 +28,11 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!hasAdminPermission(user, 'catalog')) {
-      return NextResponse.json({ error: 'Forbidden: Missing catalog permission' }, { status: 403 });
+    const auth = await verifyApiPermission('banners');
+    if (!auth.allowed) {
+      return NextResponse.json({ error: auth.status === 401 ? 'Unauthorized' : 'Forbidden: Missing permission' }, { status: auth.status });
     }
+    const supabase = createClient();
 
     const body = await request.json();
     const { title, subtitle, image_path, media_type = 'image', link = '/products', sort = 0, is_active = true } = body;
@@ -72,14 +66,11 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!hasAdminPermission(user, 'catalog')) {
-      return NextResponse.json({ error: 'Forbidden: Missing catalog permission' }, { status: 403 });
+    const auth = await verifyApiPermission('banners');
+    if (!auth.allowed) {
+      return NextResponse.json({ error: auth.status === 401 ? 'Unauthorized' : 'Forbidden: Missing permission' }, { status: auth.status });
     }
+    const supabase = createClient();
 
     const body = await request.json();
     const { id, title, subtitle, image_path, media_type = 'image', link = '/products', sort = 0, is_active = true } = body;
@@ -115,14 +106,11 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!hasAdminPermission(user, 'catalog')) {
-      return NextResponse.json({ error: 'Forbidden: Missing catalog permission' }, { status: 403 });
+    const auth = await verifyApiPermission('banners');
+    if (!auth.allowed) {
+      return NextResponse.json({ error: auth.status === 401 ? 'Unauthorized' : 'Forbidden: Missing permission' }, { status: auth.status });
     }
+    const supabase = createClient();
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');

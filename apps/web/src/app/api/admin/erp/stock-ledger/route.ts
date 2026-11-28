@@ -1,19 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { hasAdminPermission } from '@/lib/admin-auth';
+import { verifyApiPermission } from '@/lib/admin-auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!hasAdminPermission(user, 'erp')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const auth = await verifyApiPermission('erp_stock_ledger');
+    if (!auth.allowed) {
+      return NextResponse.json({ error: auth.status === 401 ? 'Unauthorized' : 'Forbidden: Missing permission' }, { status: auth.status });
     }
+    const supabase = createClient();
 
     const { data: entries, error } = await supabase
       .from('stock_ledger')
@@ -32,14 +29,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!hasAdminPermission(user, 'erp')) {
-      return NextResponse.json({ error: 'Forbidden: Missing erp permission' }, { status: 403 });
+    const auth = await verifyApiPermission('erp_stock_ledger');
+    if (!auth.allowed) {
+      return NextResponse.json({ error: auth.status === 401 ? 'Unauthorized' : 'Forbidden: Missing permission' }, { status: auth.status });
     }
+    const supabase = createClient();
 
     const body = await request.json();
     const { item_type, item_id, change, reason = 'adjustment', ref_id } = body;

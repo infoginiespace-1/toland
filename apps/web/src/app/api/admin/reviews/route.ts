@@ -1,20 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { hasAdminPermission } from '@/lib/admin-auth';
+import { verifyApiPermission } from '@/lib/admin-auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!hasAdminPermission(user, 'catalog')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const auth = await verifyApiPermission('reviews');
+    if (!auth.allowed) {
+      return NextResponse.json({ error: auth.status === 401 ? 'Unauthorized' : 'Forbidden: Missing permission' }, { status: auth.status });
     }
+    const supabase = createClient();
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
@@ -44,14 +41,11 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!hasAdminPermission(user, 'catalog')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const auth = await verifyApiPermission('reviews');
+    if (!auth.allowed) {
+      return NextResponse.json({ error: auth.status === 401 ? 'Unauthorized' : 'Forbidden: Missing permission' }, { status: auth.status });
     }
+    const supabase = createClient();
 
     const body = await request.json();
     const { id, status, is_featured } = body;
@@ -83,14 +77,11 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!hasAdminPermission(user, 'catalog')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const auth = await verifyApiPermission('reviews');
+    if (!auth.allowed) {
+      return NextResponse.json({ error: auth.status === 401 ? 'Unauthorized' : 'Forbidden: Missing permission' }, { status: auth.status });
     }
+    const supabase = createClient();
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');

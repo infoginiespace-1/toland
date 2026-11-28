@@ -1,16 +1,14 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { isStrictAdmin } from '@/lib/admin-auth';
+import { verifyApiPermission } from '@/lib/admin-auth';
 
 export async function POST() {
   try {
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!isStrictAdmin(user)) {
-      return NextResponse.json({ error: 'Forbidden: Super Admin required' }, { status: 403 });
+    const auth = await verifyApiPermission('wa_settings');
+    if (!auth.allowed) {
+      return NextResponse.json({ error: auth.status === 401 ? 'Unauthorized' : 'Forbidden: Missing permission' }, { status: auth.status });
     }
+    const supabase = createClient();
 
     const bridgeUrl = process.env.WHATSAPP_BRIDGE_URL || 'https://toland-whatsapp-bridge.onrender.com';
     const secret = process.env.WHATSAPP_BRIDGE_SECRET || 'toland_bridge_secret_dev';

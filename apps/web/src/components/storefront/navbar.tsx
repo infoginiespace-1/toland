@@ -25,7 +25,7 @@ import {
 import { SearchModal } from '@/components/storefront/search-modal';
 import { WishlistDrawer } from '@/components/storefront/wishlist-drawer';
 import { MobileBottomNav } from '@/components/storefront/mobile-bottom-nav';
-import { isTeamRole, resolveUserRole } from '@/lib/rbac';
+import { isTeamRole, resolveUserPermissions, resolveUserRole } from '@/lib/rbac';
 
 const CATEGORY_LINKS = [
   {
@@ -80,7 +80,10 @@ export function StorefrontNavbar() {
 
         if (currentUser) {
           setUser(currentUser);
-          setIsAdmin(isTeamRole(resolveUserRole(currentUser)));
+          setIsAdmin(
+            isTeamRole(resolveUserRole(currentUser)) &&
+              resolveUserPermissions(currentUser).length > 0
+          );
         } else {
           setUser(null);
           setIsAdmin(false);
@@ -100,7 +103,10 @@ export function StorefrontNavbar() {
       const currentUser = session?.user || null;
       setUser(currentUser);
       if (currentUser) {
-        setIsAdmin(isTeamRole(resolveUserRole(currentUser)));
+        setIsAdmin(
+          isTeamRole(resolveUserRole(currentUser)) &&
+            resolveUserPermissions(currentUser).length > 0
+        );
       } else {
         setIsAdmin(false);
       }

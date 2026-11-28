@@ -17,8 +17,19 @@ import {
   Lock,
   ShoppingBag,
   Info,
+  Sliders,
+  RotateCcw,
 } from 'lucide-react';
-import { ALL_ROLES, AppRole, ROLE_META, TEAM_ROLES } from '@/lib/rbac';
+import {
+  ALL_ROLES,
+  AdminModule,
+  AppRole,
+  PERMISSION_GROUPS,
+  ROLE_META,
+  TEAM_ROLES,
+  getRoleDefaultPermissions,
+  hasCustomPermissionOverride,
+} from '@/lib/rbac';
 
 export interface AdminUserItem {
   id: string;
@@ -27,6 +38,8 @@ export interface AdminUserItem {
   authEmail: string | null;
   phone: string | null;
   role: AppRole;
+  permissions: AdminModule[];
+  hasCustomPermissions: boolean;
   emailConfirmed: boolean;
   phoneConfirmed: boolean;
   isProtected: boolean;
@@ -42,8 +55,143 @@ export interface AllowlistItem {
   phone: string | null;
   email: string | null;
   role: AppRole;
+  permissions?: AdminModule[] | null;
   notes: string | null;
   created_at: string;
+}
+
+function GroupedPermissionsSelector({
+  role,
+  selectedPermissions,
+  onChangePermissions,
+}: {
+  role: AppRole;
+  selectedPermissions: AdminModule[];
+  onChangePermissions: (next: AdminModule[]) => void;
+}) {
+  const selectedSet = useMemo(() => new Set(selectedPermissions), [selectedPermissions]);
+  const isCustom = hasCustomPermissionOverride(role, selectedPermissions);
+
+  const toggleSingle = (key: AdminModule) => {
+    if (selectedSet.has(key)) {
+      onChangePermissions(selectedPermissions.filter((k) => k !== key));
+    } else {
+      onChangePermissions([...selectedPermissions, key]);
+    }
+  };
+
+  const toggleGroup = (keys: AdminModule[]) => {
+    const allSelected = keys.every((k) => selectedSet.has(k));
+    if (allSelected) {
+      onChangePermissions(selectedPermissions.filter((k) => !keys.includes(k)));
+    } else {
+      const merged = new Set([...selectedPermissions, ...keys]);
+      onChangePermissions(Array.from(merged));
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold text-slate-900">
+            Admin Panel Modules &amp; Tab Access
+          </span>
+          <span className="px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-[10px] font-mono font-bold text-slate-700">
+            {selectedPermissions.length} tabs ticked
+          </span>
+          {isCustom && (
+            <span className="px-2 py-0.5 rounded-full bg-indigo-50 border border-indigo-200 text-[10px] font-bold text-indigo-700">
+              Customized
+            </span>
+          )}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => onChangePermissions(getRoleDefaultPermissions(role))}
+          className="text-[11px] font-semibold text-primary hover:underline flex items-center gap-1 cursor-pointer"
+        >
+          <RotateCcw className="w-3 h-3" />
+          <span>Reset to {ROLE_META[role].shortLabel} Defaults</span>
+        </button>
+      </div>
+
+      {role === 'customer' ? (
+        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-500">
+          Customer accounts do not have Admin Panel access. Switch role to a team role (`Staff`, `Sales/CRM`, `ERP Mgr`, `Marketing`, or `Admin`) to tick specific modules.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[46vh] overflow-y-auto pr-1">
+          {PERMISSION_GROUPS.map((group) => {
+            const groupKeys = group.items.map((i) => i.key);
+            const checkedCount = groupKeys.filter((k) => selectedSet.has(k)).length;
+            const allChecked = checkedCount === groupKeys.length;
+
+            return (
+              <div
+                key={group.id}
+                className="p-3.5 rounded-2xl bg-slate-50/80 border border-slate-200 space-y-2.5"
+              >
+                <label className="flex items-center justify-between gap-2 pb-2 border-b border-slate-200 cursor-pointer select-none">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={allChecked}
+                      onChange={() => toggleGroup(groupKeys)}
+                      className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary cursor-pointer"
+                    />
+                    <div>
+                      <div className="text-xs font-extrabold text-slate-900">
+                        {group.label}
+                      </div>
+                      <div className="text-[10px] text-slate-500">
+                        {group.description}
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-white border border-slate-200 text-slate-600 shrink-0">
+                    {checkedCount}/{groupKeys.length}
+                  </span>
+                </label>
+
+                <div className="space-y-1.5">
+                  {group.items.map((item) => {
+                    const checked = selectedSet.has(item.key);
+                    return (
+                      <label
+                        key={item.key}
+                        className={`flex items-start gap-2.5 p-2 rounded-xl border transition-colors cursor-pointer select-none ${
+                          checked
+                            ? 'bg-white border-primary/30 shadow-2xs'
+                            : 'bg-transparent border-transparent hover:bg-white/70'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleSingle(item.key)}
+                          className="w-4 h-4 mt-0.5 rounded border-slate-300 text-primary focus:ring-primary cursor-pointer"
+                        />
+                        <div className="min-w-0">
+                          <div className="text-xs font-bold text-slate-800 leading-tight">
+                            {item.label}
+                          </div>
+                          <div className="text-[10px] text-slate-500 leading-snug mt-0.5">
+                            {item.description}
+                          </div>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function UsersManager({
@@ -64,10 +212,20 @@ export function UsersManager({
   const [deleteTarget, setDeleteTarget] = useState<AdminUserItem | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Per-User Role + Checkbox Permission Modal
+  const [permTarget, setPermTarget] = useState<AdminUserItem | null>(null);
+  const [editRole, setEditRole] = useState<AppRole>('staff');
+  const [editPermissions, setEditPermissions] = useState<AdminModule[]>([]);
+  const [savingPerms, setSavingPerms] = useState(false);
+
+  // Pre-Assign Team Role + Checkboxes Modal
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [invitePhone, setInvitePhone] = useState('');
   const [inviteRole, setInviteRole] = useState<AppRole>('sales_crm');
+  const [invitePermissions, setInvitePermissions] = useState<AdminModule[]>(
+    getRoleDefaultPermissions('sales_crm')
+  );
   const [inviteNotes, setInviteNotes] = useState('');
   const [inviting, setInviting] = useState(false);
 
@@ -115,7 +273,7 @@ export function UsersManager({
     });
   }, [users, search, roleFilter]);
 
-  const handleRoleChange = async (userItem: AdminUserItem, nextRole: AppRole) => {
+  const handleQuickRoleChange = async (userItem: AdminUserItem, nextRole: AppRole) => {
     if (userItem.role === nextRole) return;
     setFeedback(null);
     setUpdatingId(userItem.id);
@@ -131,11 +289,20 @@ export function UsersManager({
       }
 
       setUsers((prev) =>
-        prev.map((u) => (u.id === userItem.id ? { ...u, role: nextRole } : u))
+        prev.map((u) =>
+          u.id === userItem.id
+            ? {
+                ...u,
+                role: nextRole,
+                permissions: data.permissions || getRoleDefaultPermissions(nextRole),
+                hasCustomPermissions: Boolean(data.hasCustomPermissions),
+              }
+            : u
+        )
       );
       setFeedback({
         type: 'success',
-        message: `${userItem.name}: Role assigned as "${ROLE_META[nextRole].label}".`,
+        message: `${userItem.name}: Role updated to "${ROLE_META[nextRole].label}" (use Access button to tick/untick individual tabs).`,
       });
       await refreshData();
     } catch (err: any) {
@@ -145,6 +312,50 @@ export function UsersManager({
       });
     } finally {
       setUpdatingId(null);
+    }
+  };
+
+  const openPermissionsModal = (u: AdminUserItem) => {
+    setPermTarget(u);
+    setEditRole(u.role);
+    setEditPermissions(
+      u.permissions.length > 0 ? [...u.permissions] : getRoleDefaultPermissions(u.role)
+    );
+  };
+
+  const handleSaveModalPermissions = async () => {
+    if (!permTarget) return;
+    setFeedback(null);
+    setSavingPerms(true);
+    try {
+      const payload =
+        editRole === 'customer'
+          ? { role: 'customer', permissions: null }
+          : { role: editRole, permissions: editPermissions };
+
+      const res = await fetch(`/api/admin/users/${permTarget.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to save permissions');
+      }
+
+      setFeedback({
+        type: 'success',
+        message: `${permTarget.name}: ${data.message}`,
+      });
+      setPermTarget(null);
+      await refreshData();
+    } catch (err: any) {
+      setFeedback({
+        type: 'error',
+        message: err.message || 'Could not save permissions',
+      });
+    } finally {
+      setSavingPerms(false);
     }
   };
 
@@ -192,6 +403,7 @@ export function UsersManager({
           email: inviteEmail.trim(),
           phone: invitePhone.trim(),
           role: inviteRole,
+          permissions: invitePermissions,
           notes: inviteNotes.trim(),
         }),
       });
@@ -226,10 +438,10 @@ export function UsersManager({
         <div>
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2.5">
             <ShieldCheck className="w-6 h-6 text-primary" />
-            <span>Users &amp; Role Management</span>
+            <span>Users, Roles &amp; Module Permissions</span>
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Assign business roles across ERP, CRM, Catalog &amp; WhatsApp, or delete user accounts cleanly for re-signup.
+            Assign business roles, tick/untick individual Admin Panel tabs per user, or remove accounts cleanly for fresh re-signup.
           </p>
         </div>
 
@@ -245,7 +457,11 @@ export function UsersManager({
 
           <button
             type="button"
-            onClick={() => setShowInviteModal(true)}
+            onClick={() => {
+              setInviteRole('sales_crm');
+              setInvitePermissions(getRoleDefaultPermissions('sales_crm'));
+              setShowInviteModal(true);
+            }}
             className="px-4 py-2 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-bold flex items-center gap-1.5 shadow-sm cursor-pointer"
           >
             <UserPlus className="w-4 h-4" />
@@ -323,10 +539,10 @@ export function UsersManager({
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
               <Shield className="w-4 h-4 text-primary" />
-              <span>TOLAND Role Permissions Overview</span>
+              <span>TOLAND Role Presets &amp; Custom Checkboxes</span>
             </h2>
             <span className="text-[11px] text-slate-500">
-              Sidebar &amp; API routes automatically filter by assigned role
+              Use the Access button in any row to manually tick/untick any of the 25 tabs
             </span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -343,7 +559,9 @@ export function UsersManager({
                     >
                       {meta.label}
                     </span>
-                    <span className="text-[10px] font-mono text-slate-500">{r}</span>
+                    <span className="text-[10px] font-mono text-slate-500">
+                      {meta.modules.length} tabs
+                    </span>
                   </div>
                   <p className="text-xs text-slate-600 leading-relaxed">
                     {meta.description}
@@ -408,7 +626,7 @@ export function UsersManager({
               <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500">
                 <th className="py-3.5 px-4">User Identity</th>
                 <th className="py-3.5 px-4">Verification</th>
-                <th className="py-3.5 px-4">Assigned Role</th>
+                <th className="py-3.5 px-4">Assigned Role &amp; Tab Access</th>
                 <th className="py-3.5 px-4">Orders</th>
                 <th className="py-3.5 px-4">Joined</th>
                 <th className="py-3.5 px-4 text-right">Actions</th>
@@ -440,14 +658,14 @@ export function UsersManager({
                               <span className="truncate max-w-[180px]">{u.name}</span>
                               {u.isProtected && (
                                 <span
-                                  title="Primary Owner Account (Protected)"
+                                  title="Sole Protected Super Admin"
                                   className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 text-[9px] font-bold uppercase"
                                 >
                                   <Lock className="w-2.5 h-2.5" />
-                                  Owner
+                                  Super Admin
                                 </span>
                               )}
-                              {u.isSelf && (
+                              {u.isSelf && !u.isProtected && (
                                 <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-bold uppercase">
                                   You
                                 </span>
@@ -493,12 +711,12 @@ export function UsersManager({
                       </td>
 
                       <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <select
                             value={u.role}
                             disabled={disabledControls}
                             onChange={(e) =>
-                              handleRoleChange(u, e.target.value as AppRole)
+                              handleQuickRoleChange(u, e.target.value as AppRole)
                             }
                             aria-label={`Assign role for ${u.name}`}
                             className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition-colors ${meta.badgeClass} ${
@@ -513,6 +731,33 @@ export function UsersManager({
                               </option>
                             ))}
                           </select>
+
+                          {!disabledControls && (
+                            <button
+                              type="button"
+                              onClick={() => openPermissionsModal(u)}
+                              className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-[11px] font-bold transition-colors cursor-pointer ${
+                                u.hasCustomPermissions
+                                  ? 'bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100'
+                                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                              }`}
+                              title="Tick or untick individual tabs for this user"
+                            >
+                              <Sliders className="w-3 h-3" />
+                              <span>
+                                {u.role === 'customer'
+                                  ? 'Access'
+                                  : `${u.permissions.length} tabs${u.hasCustomPermissions ? ' · Custom' : ''}`}
+                              </span>
+                            </button>
+                          )}
+
+                          {u.isProtected && (
+                            <span className="text-[10px] text-slate-500 font-semibold">
+                              All 26 tabs (Locked)
+                            </span>
+                          )}
+
                           {isUpdating && (
                             <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
                           )}
@@ -580,7 +825,7 @@ export function UsersManager({
       {allowlist.length > 0 && (
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-3">
           <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-            Team Role Allowlist ({allowlist.length})
+            Team Role &amp; Permission Allowlist ({allowlist.length})
           </h2>
           <div className="flex flex-wrap gap-2">
             {allowlist.map((entry) => (
@@ -599,8 +844,97 @@ export function UsersManager({
                 >
                   {ROLE_META[entry.role]?.shortLabel || entry.role}
                 </span>
+                {Array.isArray(entry.permissions) && (
+                  <span className="text-[10px] font-mono text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded-full font-bold">
+                    {entry.permissions.length} custom tabs
+                  </span>
+                )}
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Customize Role & Module Checkboxes Modal */}
+      {permTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="w-full max-w-3xl bg-white rounded-3xl border border-slate-200 shadow-2xl p-6 space-y-5 max-h-[92vh] flex flex-col">
+            <div className="flex items-start justify-between gap-4 shrink-0">
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                  <Sliders className="w-4 h-4 text-primary" />
+                  <span>Customize Role &amp; Tab Access — {permTarget.name}</span>
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {permTarget.email || permTarget.phone} &middot; Select a preset role and manually tick/untick individual tabs.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPermTarget(null)}
+                className="p-1.5 rounded-full hover:bg-slate-100 text-slate-500 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-4 overflow-y-auto flex-1 pr-1">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Role Preset
+                </label>
+                <select
+                  value={editRole}
+                  onChange={(e) => {
+                    const next = e.target.value as AppRole;
+                    setEditRole(next);
+                    setEditPermissions(getRoleDefaultPermissions(next));
+                  }}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                >
+                  {ALL_ROLES.map((r) => (
+                    <option key={r} value={r}>
+                      {ROLE_META[r].label} — {ROLE_META[r].description}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <GroupedPermissionsSelector
+                role={editRole}
+                selectedPermissions={editPermissions}
+                onChangePermissions={setEditPermissions}
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200 shrink-0">
+              <button
+                type="button"
+                disabled={savingPerms}
+                onClick={() => setPermTarget(null)}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={savingPerms}
+                onClick={handleSaveModalPermissions}
+                className="px-5 py-2 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                {savingPerms ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Save Role &amp; Permissions</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -670,14 +1004,14 @@ export function UsersManager({
         </div>
       )}
 
-      {/* Pre-Assign Team Role Modal */}
+      {/* Pre-Assign Team Role & Module Checkboxes Modal */}
       {showInviteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200 shadow-2xl p-6 space-y-4">
-            <div className="flex items-center justify-between">
+          <div className="w-full max-w-3xl bg-white rounded-3xl border border-slate-200 shadow-2xl p-6 space-y-4 max-h-[92vh] flex flex-col">
+            <div className="flex items-center justify-between shrink-0">
               <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
                 <UserPlus className="w-4 h-4 text-primary" />
-                <span>Assign Team Role by Email / Mobile</span>
+                <span>Pre-Assign Team Role &amp; Module Checkboxes</span>
               </h3>
               <button
                 type="button"
@@ -688,64 +1022,78 @@ export function UsersManager({
               </button>
             </div>
 
-            <form onSubmit={handlePreAssignRole} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Staff Email Address
-                </label>
-                <input
-                  type="email"
-                  value={inviteEmail}
-                  onChange={(e) => setInviteEmail(e.target.value)}
-                  placeholder="manager@toland.in"
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-                />
+            <form onSubmit={handlePreAssignRole} className="space-y-4 overflow-y-auto flex-1 pr-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Staff Email Address
+                  </label>
+                  <input
+                    type="email"
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                    placeholder="manager@toland.in"
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Mobile Number (10-digit Indian)
+                  </label>
+                  <input
+                    type="tel"
+                    value={invitePhone}
+                    onChange={(e) => setInvitePhone(e.target.value)}
+                    placeholder="9876543210"
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Mobile Number (10-digit Indian)
-                </label>
-                <input
-                  type="tel"
-                  value={invitePhone}
-                  onChange={(e) => setInvitePhone(e.target.value)}
-                  placeholder="9876543210"
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Select Role Preset
+                  </label>
+                  <select
+                    value={inviteRole}
+                    onChange={(e) => {
+                      const next = e.target.value as AppRole;
+                      setInviteRole(next);
+                      setInvitePermissions(getRoleDefaultPermissions(next));
+                    }}
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                  >
+                    {TEAM_ROLES.map((r) => (
+                      <option key={r} value={r}>
+                        {ROLE_META[r].label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Notes (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={inviteNotes}
+                    onChange={(e) => setInviteNotes(e.target.value)}
+                    placeholder="e.g. Sheikhpura Factory Supervisor"
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Select Role
-                </label>
-                <select
-                  value={inviteRole}
-                  onChange={(e) => setInviteRole(e.target.value as AppRole)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-                >
-                  {TEAM_ROLES.map((r) => (
-                    <option key={r} value={r}>
-                      {ROLE_META[r].label} — {ROLE_META[r].description}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <GroupedPermissionsSelector
+                role={inviteRole}
+                selectedPermissions={invitePermissions}
+                onChangePermissions={setInvitePermissions}
+              />
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Notes (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={inviteNotes}
-                  onChange={(e) => setInviteNotes(e.target.value)}
-                  placeholder="e.g. Sheikhpura Factory Floor Manager"
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
                 <button
                   type="button"
                   onClick={() => setShowInviteModal(false)}
@@ -764,7 +1112,7 @@ export function UsersManager({
                       <span>Saving...</span>
                     </>
                   ) : (
-                    <span>Save Team Role</span>
+                    <span>Save Team Role &amp; Access</span>
                   )}
                 </button>
               </div>

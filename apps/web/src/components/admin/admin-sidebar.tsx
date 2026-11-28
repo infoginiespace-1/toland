@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -16,7 +16,6 @@ import {
   Menu,
   X,
   Shield,
-  Truck,
   Users,
   Boxes,
   Factory,
@@ -35,21 +34,53 @@ import {
 } from 'lucide-react';
 import {
   AdminModule,
+  PERMISSION_GROUPS,
   ROLE_META,
-  hasModuleAccess,
+  getRoleDefaultPermissions,
   normalizeRoleValue,
 } from '@/lib/rbac';
+
+const MODULE_ICON_MAP: Record<AdminModule, any> = {
+  dashboard: LayoutDashboard,
+  products: Package,
+  categories: Layers,
+  banners: ImageIcon,
+  reviews: Star,
+  coupons: Tag,
+  orders: ShoppingBag,
+  returns: RotateCcw,
+  erp_overview: LayoutDashboard,
+  erp_raw_materials: Boxes,
+  erp_suppliers: Factory,
+  erp_boms: FileSpreadsheet,
+  erp_purchase_orders: ClipboardList,
+  erp_production: Layers,
+  erp_stock_ledger: Activity,
+  erp_b2b_tiers: Percent,
+  crm_customers: Users,
+  crm_leads: Contact,
+  crm_followups: CalendarClock,
+  crm_activities: Activity,
+  wa_inbox: MessageSquare,
+  wa_templates: FileSpreadsheet,
+  wa_campaigns: Radio,
+  wa_autoreplies: Bot,
+  wa_settings: Sliders,
+  users: ShieldCheck,
+};
 
 interface AdminSidebarProps {
   userPhone?: string;
   userRole?: string;
   isSuperAdmin?: boolean;
+  permissions?: AdminModule[];
 }
 
 export function AdminSidebar({
   userPhone = 'Admin',
   userRole = 'admin',
   isSuperAdmin = false,
+  permissions,
 }: AdminSidebarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -58,68 +89,46 @@ export function AdminSidebar({
     ? 'Super Admin'
     : ROLE_META[currentRole]?.shortLabel || userRole;
 
-  const rawNavItems: {
-    group: string;
-    links: { label: string; href: string; icon: any; module: AdminModule }[];
-  }[] = [
-    {
-      group: 'Core Storefront',
-      links: [
-        { label: 'Dashboard', href: '/admin', icon: LayoutDashboard, module: 'dashboard' },
-        { label: 'Products', href: '/admin/products', icon: Package, module: 'catalog' },
-        { label: 'Categories', href: '/admin/categories', icon: Layers, module: 'catalog' },
-        { label: 'Banners', href: '/admin/banners', icon: ImageIcon, module: 'catalog' },
-        { label: 'Customer Reviews', href: '/admin/reviews', icon: Star, module: 'catalog' },
-        { label: 'Coupons', href: '/admin/coupons', icon: Tag, module: 'catalog' },
-        { label: 'Orders & Shipments', href: '/admin/orders', icon: ShoppingBag, module: 'orders' },
-        { label: 'Returns & Exchanges', href: '/admin/returns', icon: RotateCcw, module: 'orders' },
-        { label: 'Users & Roles', href: '/admin/users', icon: ShieldCheck, module: 'users' },
-      ],
-    },
-    {
-      group: 'ERP & Manufacturing',
-      links: [
-        { label: 'ERP Overview', href: '/admin/erp', icon: LayoutDashboard, module: 'erp' },
-        { label: 'Raw Materials', href: '/admin/erp/raw-materials', icon: Boxes, module: 'erp' },
-        { label: 'Suppliers', href: '/admin/erp/suppliers', icon: Factory, module: 'erp' },
-        { label: 'Bill of Materials', href: '/admin/erp/boms', icon: FileSpreadsheet, module: 'erp' },
-        { label: 'Purchase Orders', href: '/admin/erp/purchase-orders', icon: ClipboardList, module: 'erp' },
-        { label: 'Production Runs', href: '/admin/erp/production', icon: Layers, module: 'erp' },
-        { label: 'Stock Ledger', href: '/admin/erp/stock-ledger', icon: Activity, module: 'erp' },
-        { label: 'B2B Price Tiers', href: '/admin/erp/b2b-tiers', icon: Percent, module: 'erp' },
-      ],
-    },
-    {
-      group: 'CRM & B2B Pipeline',
-      links: [
-        { label: 'Customer Directory', href: '/admin/crm/customers', icon: Users, module: 'crm' },
-        { label: 'B2B Leads Pipeline', href: '/admin/crm/leads', icon: Contact, module: 'crm' },
-        { label: 'Scheduled Follow-ups', href: '/admin/crm/followups', icon: CalendarClock, module: 'crm' },
-        { label: 'Activity Audit Feed', href: '/admin/crm/activities', icon: Activity, module: 'crm' },
-      ],
-    },
-    {
-      group: 'WhatsApp & Engagement',
-      links: [
-        { label: 'Live Inbox & Bridge', href: '/admin/whatsapp', icon: MessageSquare, module: 'whatsapp_inbox' },
-        { label: 'Message Templates', href: '/admin/whatsapp/templates', icon: FileSpreadsheet, module: 'whatsapp_admin' },
-        { label: 'Broadcast Campaigns', href: '/admin/whatsapp/campaigns', icon: Radio, module: 'whatsapp_admin' },
-        { label: 'Auto-Reply Bot', href: '/admin/whatsapp/auto-replies', icon: Bot, module: 'whatsapp_admin' },
-        { label: 'Anti-Ban Engine', href: '/admin/whatsapp/settings', icon: Sliders, module: 'whatsapp_admin' },
-      ],
-    },
-  ];
+  const allowedSet = useMemo(() => {
+    const list =
+      permissions !== undefined
+        ? permissions
+        : getRoleDefaultPermissions(currentRole);
+    return new Set<AdminModule>(list);
+  }, [permissions, currentRole]);
 
-  const navItems = rawNavItems
-    .map((sec) => ({
-      ...sec,
-      links: sec.links.filter((link) =>
-        link.module === 'users'
-          ? isSuperAdmin
-          : hasModuleAccess(currentRole, link.module)
-      ),
-    }))
-    .filter((sec) => sec.links.length > 0);
+  const navItems = useMemo(() => {
+    return PERMISSION_GROUPS.map((group) => {
+      const visibleLinks = group.items
+        .filter((item) => isSuperAdmin || allowedSet.has(item.key))
+        .map((item) => ({
+          label: item.label,
+          href: item.href,
+          icon: MODULE_ICON_MAP[item.key] || LayoutDashboard,
+        }));
+
+      // Super Admin exclusive link in first group
+      if (group.id === 'storefront' && isSuperAdmin) {
+        visibleLinks.push({
+          label: 'Users & Roles',
+          href: '/admin/users',
+          icon: ShieldCheck,
+        });
+      }
+
+      return {
+        group: group.label,
+        links: visibleLinks,
+      };
+    }).filter((sec) => sec.links.length > 0);
+  }, [allowedSet, isSuperAdmin]);
+
+  const isLinkActive = (href: string) => {
+    if (href === '/admin' || href === '/admin/erp' || href === '/admin/whatsapp') {
+      return pathname === href;
+    }
+    return pathname === href || pathname.startsWith(`${href}/`);
+  };
 
   const sidebarContent = (
     <div className="flex flex-col h-full bg-[#0B1120] text-white select-none">
@@ -158,10 +167,7 @@ export function AdminSidebar({
             <div className="space-y-0.5 mt-1">
               {sec.links.map((link) => {
                 const Icon = link.icon;
-                const isActive =
-                  link.href === '/admin'
-                    ? pathname === '/admin'
-                    : pathname.startsWith(link.href);
+                const isActive = isLinkActive(link.href);
 
                 return (
                   <Link
@@ -219,7 +225,7 @@ export function AdminSidebar({
           <button
             type="submit"
             title="Sign out of Admin ERP"
-            className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-white/10 rounded-lg transition-colors"
+            className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
           >
             <LogOut className="w-4 h-4" />
           </button>

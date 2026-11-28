@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { findVerifiedUserByPhone, normalizeIndianPhone } from '@/lib/auth-helpers';
-import { isTeamRole, normalizeRoleValue } from '@/lib/rbac';
+import { getFirstAllowedAdminPath, isTeamRole, normalizeRoleValue } from '@/lib/rbac';
 
 export async function POST(request: Request) {
   try {
@@ -125,11 +125,23 @@ export async function POST(request: Request) {
       throw new Error(linkErr?.message || 'Failed to generate authentication token');
     }
 
+    // Read saved permissions too so redirect lands on their first allowed module
+    const { data: finalProf } = await (supabaseAdmin as any)
+      .from('profiles')
+      .select('permissions')
+      .eq('id', targetUser.id)
+      .maybeSingle();
+
+    const firstAdminPath = getFirstAllowedAdminPath(
+      { email: targetEmail, app_metadata: { role: assignedRole, permissions: finalProf?.permissions } },
+      finalProf?.permissions
+    );
+
     return NextResponse.json({
       success: true,
       token_hash: linkData.properties.hashed_token,
       role: assignedRole,
-      redirectTo: isTeamRole(normalizeRoleValue(assignedRole)) ? '/admin' : '/',
+      redirectTo: isTeamRole(normalizeRoleValue(assignedRole)) && firstAdminPath ? firstAdminPath : '/',
     });
   } catch (err: any) {
     console.error('Error in /api/auth/verify-otp:', err);

@@ -1,20 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { hasAdminPermission, triggerBridgeEndpoint } from '@/lib/admin-auth';
+import { verifyApiPermission, triggerBridgeEndpoint } from '@/lib/admin-auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!hasAdminPermission(user, 'whatsapp_admin')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const auth = await verifyApiPermission('wa_settings');
+    if (!auth.allowed) {
+      return NextResponse.json({ error: auth.status === 401 ? 'Unauthorized' : 'Forbidden: Missing permission' }, { status: auth.status });
     }
+    const supabase = createClient();
 
     const adminDb = createAdminClient();
     const { data: settings, error } = await adminDb
@@ -34,14 +31,11 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!hasAdminPermission(user, 'whatsapp_admin')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const auth = await verifyApiPermission('wa_settings');
+    if (!auth.allowed) {
+      return NextResponse.json({ error: auth.status === 401 ? 'Unauthorized' : 'Forbidden: Missing permission' }, { status: auth.status });
     }
+    const supabase = createClient();
 
     const body = await request.json();
     const {

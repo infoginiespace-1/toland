@@ -1,18 +1,16 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { hasAdminPermission } from '@/lib/admin-auth';
+import { verifyApiPermission } from '@/lib/admin-auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!hasAdminPermission(user, 'whatsapp_inbox')) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const auth = await verifyApiPermission(['wa_inbox', 'wa_settings']);
+  if (!auth.allowed) {
+    return NextResponse.json({ error: auth.status === 401 ? 'Unauthorized' : 'Forbidden: Missing permission' }, { status: auth.status });
   }
+  const supabase = createClient();
 
   const bridgeUrl = process.env.WHATSAPP_BRIDGE_URL || 'https://toland-whatsapp-bridge.onrender.com';
   const secret = process.env.WHATSAPP_BRIDGE_SECRET || 'toland_bridge_secret_dev';

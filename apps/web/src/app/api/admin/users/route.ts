@@ -7,9 +7,12 @@ import {
   ALL_ROLES,
   AppRole,
   TEAM_ROLES,
+  hasCustomPermissionOverride,
   isProtectedOwner,
   normalizeRoleValue,
+  resolveUserPermissions,
   resolveUserRole,
+  sanitizePermissionList,
 } from '@/lib/rbac';
 
 export const dynamic = 'force-dynamic';
@@ -43,7 +46,7 @@ export async function GET() {
 
     if (!currentUser || !isSoleSuperAdmin(currentUser)) {
       return NextResponse.json(
-        { error: 'Forbidden: Only Super Admin can manage users and roles' },
+        { error: 'Forbidden: Only Primary Super Admin can manage users and permissions' },
         { status: 403 }
       );
     }
@@ -54,14 +57,14 @@ export async function GET() {
       listAllAuthUsers(supabaseAdmin),
       (supabaseAdmin as any)
         .from('profiles')
-        .select('id, phone, name, email, role, created_at, updated_at'),
+        .select('id, phone, name, email, role, permissions, created_at, updated_at'),
       (supabaseAdmin as any)
         .from('orders')
         .select('user_id, total')
         .not('user_id', 'is', null),
       (supabaseAdmin as any)
         .from('admin_allowlist')
-        .select('id, phone, email, role, notes, created_at')
+        .select('id, phone, email, role, permissions, notes, created_at')
         .order('created_at', { ascending: false }),
     ]);
 
@@ -91,14 +94,24 @@ export async function GET() {
         const phoneNorm = rawPhone ? normalizeIndianPhone(rawPhone) : null;
         const displayPhone = phoneNorm?.valid ? phoneNorm.canonical : rawPhone;
 
-        const resolvedRole: AppRole = resolveUserRole({
+        const authLike = {
           email: rawEmail,
           app_metadata: u.app_metadata,
           user_metadata: {
             ...u.user_metadata,
             role: prof?.role || u.user_metadata?.role,
           },
-        });
+        };
+
+        const resolvedRole: AppRole = resolveUserRole(authLike);
+        const explicitCustom = prof?.permissions ?? u.app_metadata?.permissions;
+        const permissions = resolveUserPermissions(authLike, explicitCustom);
+        const isProt = isProtectedOwner(rawEmail, displayPhone);
+        const hasCustomPermissions =
+          !isProt &&
+          explicitCustom !== null &&
+          explicitCustom !== undefined &&
+          hasCustomPermissionOverride(resolvedRole, permissions);
 
         const stats = orderStats.get(u.id) || { count: 0, spent: 0 };
 
@@ -112,9 +125,11 @@ export async function GET() {
           authEmail: rawEmail,
           phone: displayPhone,
           role: resolvedRole,
+          permissions,
+          hasCustomPermissions,
           emailConfirmed: Boolean(u.email_confirmed_at),
           phoneConfirmed: Boolean(u.phone_confirmed_at),
-          isProtected: isProtectedOwner(rawEmail, displayPhone),
+          isProtected: isProt,
           isSelf: u.id === currentUser.id,
           ordersCount: stats.count,
           totalSpent: stats.spent,
@@ -150,7 +165,7 @@ export async function POST(request: Request) {
 
     if (!currentUser || !isSoleSuperAdmin(currentUser)) {
       return NextResponse.json(
-        { error: 'Forbidden: Only Super Admin can assign team roles' },
+        { error: 'Forbidden: Only Primary Super Admin can assign team roles' },
         { status: 403 }
       );
     }
@@ -160,6 +175,8 @@ export async function POST(request: Request) {
     const rawPhone = String(body.phone || '').trim();
     const role = normalizeRoleValue(body.role);
     const notes = String(body.notes || '').trim();
+    const customPerms =
+      body.permissions !== undefined ? sanitizePermissionList(body.permissions) : null;
 
     if (!TEAM_ROLES.includes(role)) {
       return NextResponse.json(
@@ -193,7 +210,6 @@ export async function POST(request: Request) {
 
     const supabaseAdmin = createAdminClient();
 
-    // Remove conflicting allowlist entries before inserting clean unified rule
     if (email) {
       await (supabaseAdmin as any)
         .from('admin_allowlist')
@@ -208,18 +224,25 @@ export async function POST(request: Request) {
         .in('phone', [phoneInfo.canonical, phoneInfo.last10, phoneInfo.authDigits]);
     }
 
+    const permissionsToSave =
+      customPerms && hasCustomPermissionOverride(role, customPerms)
+        ? customPerms
+        : customPerms !== null
+          ? customPerms
+          : null;
+
     const { error: insertErr } = await (supabaseAdmin as any)
       .from('admin_allowlist')
       .insert({
         email: email || null,
         phone: canonicalPhone,
         role,
+        permissions: permissionsToSave,
         notes: notes || 'Pre-assigned via Admin Panel',
       });
 
     if (insertErr) throw insertErr;
 
-    // Also sync immediately if matching user already exists in auth.users/profiles
     const allUsers = await listAllAuthUsers(supabaseAdmin);
     const matchingUser = allUsers.find((u) => {
       const uEmail = (u.email || '').toLowerCase();
@@ -231,21 +254,32 @@ export async function POST(request: Request) {
     });
 
     if (matchingUser && !isProtectedOwner(matchingUser.email, matchingUser.phone)) {
+      const nextAppMeta = { ...(matchingUser.app_metadata || {}), role };
+      if (permissionsToSave !== null) {
+        nextAppMeta.permissions = permissionsToSave;
+      } else {
+        delete nextAppMeta.permissions;
+      }
+
       await supabaseAdmin.auth.admin.updateUserById(matchingUser.id, {
-        app_metadata: { ...(matchingUser.app_metadata || {}), role },
+        app_metadata: nextAppMeta,
         user_metadata: { ...(matchingUser.user_metadata || {}), role },
       });
       await (supabaseAdmin as any)
         .from('profiles')
-        .update({ role, updated_at: new Date().toISOString() })
+        .update({
+          role,
+          permissions: permissionsToSave,
+          updated_at: new Date().toISOString(),
+        })
         .eq('id', matchingUser.id);
     }
 
     return NextResponse.json({
       success: true,
       message: matchingUser
-        ? `Role "${role}" assigned to existing user and saved in allowlist.`
-        : `Role "${role}" pre-authorized. It will auto-apply when they sign up or verify OTP.`,
+        ? `Role "${role}" & permissions assigned to existing user.`
+        : `Role "${role}" & module access pre-authorized for next login.`,
       validRoles: ALL_ROLES,
     });
   } catch (err: any) {
