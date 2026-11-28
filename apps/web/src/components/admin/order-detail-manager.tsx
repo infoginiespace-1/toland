@@ -44,6 +44,7 @@ export function OrderDetailManager({ order }: OrderDetailManagerProps) {
   const [updating, setUpdating] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
   const [invoiceOpen, setInvoiceOpen] = useState(false);
+  const [shippingLabelOpen, setShippingLabelOpen] = useState(false);
 
   const handleStatusUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,6 +113,14 @@ export function OrderDetailManager({ order }: OrderDetailManagerProps) {
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShippingLabelOpen(true)}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-hover shadow-xs transition-colors cursor-pointer"
+          >
+            <Truck className="w-4 h-4" />
+            <span>4x6 Shipping Label</span>
+          </button>
           <button
             type="button"
             onClick={() => setInvoiceOpen(true)}
@@ -610,6 +619,119 @@ export function OrderDetailManager({ order }: OrderDetailManagerProps) {
                 className="px-4 py-2 rounded-xl border border-[#CFE0D5] text-xs font-bold text-muted hover:text-text"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* 4x6 Thermal Shipping Barcode Label Modal */}
+      {shippingLabelOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs"
+            onClick={() => setShippingLabelOpen(false)}
+          />
+          <div className="relative bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-300 space-y-4 z-10 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+              <span className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                <Truck className="w-4 h-4 text-primary" />
+                4x6 Thermal Shipping Label
+              </span>
+              <button
+                type="button"
+                onClick={() => setShippingLabelOpen(false)}
+                className="text-slate-400 hover:text-slate-600 text-xs font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* 4x6 INCH THERMAL SLIP CONTAINER */}
+            <div className="border-2 border-black p-4 bg-white text-black font-sans space-y-3 rounded-lg text-xs">
+              {/* Header */}
+              <div className="flex justify-between items-start border-b-2 border-black pb-2">
+                <div>
+                  <h3 className="text-base font-black tracking-tighter">TOLAND</h3>
+                  <p className="text-[9px] uppercase tracking-wider font-bold">Factory Direct Dispatch</p>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs font-bold font-mono block">{shipment?.courier || 'Express Surface'}</span>
+                  <span className="text-[10px] font-mono font-bold">AWB: {shipment?.awb || 'SURFACE-STD'}</span>
+                </div>
+              </div>
+
+              {/* Barcode Mockup */}
+              <div className="text-center py-2 bg-slate-50 border border-black/20 rounded">
+                <div className="font-mono text-xl tracking-[0.3em] font-black uppercase">
+                  ||| | |||| | ||||| || |
+                </div>
+                <span className="font-mono text-2xs font-bold block mt-0.5">{order.order_no}</span>
+              </div>
+
+              {/* Payment Box */}
+              <div
+                className={`p-2 border-2 text-center rounded font-black text-xs uppercase ${
+                  order.payment_method === 'cod'
+                    ? 'border-black bg-black text-white'
+                    : 'border-black bg-white text-black'
+                }`}
+              >
+                {order.payment_method === 'cod'
+                  ? `CASH ON DELIVERY · COLLECT ₹${order.total}`
+                  : `PREPAID · DO NOT COLLECT CASH (₹${order.total})`}
+              </div>
+
+              {/* Delivery To (Consignee) */}
+              <div className="border border-black p-2.5 rounded space-y-1">
+                <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500 block">
+                  Deliver To (Consignee):
+                </span>
+                <p className="text-sm font-black leading-tight">{address.name}</p>
+                <p className="text-xs leading-snug">{address.line1}{address.line2 ? `, ${address.line2}` : ''}</p>
+                <p className="text-xs leading-snug">{address.city}, {address.state}</p>
+                <div className="flex items-center justify-between pt-1 border-t border-black/20 mt-1">
+                  <span className="text-xs font-bold">PIN:</span>
+                  <span className="text-lg font-black font-mono tracking-widest">{address.pincode}</span>
+                </div>
+                <p className="text-xs font-mono font-bold">Contact: {address.phone}</p>
+              </div>
+
+              {/* Package Items Manifest */}
+              <div className="border border-black p-2 rounded text-[10px] space-y-1">
+                <span className="font-bold uppercase tracking-wider text-slate-600 block">Package Contents:</span>
+                <div className="divide-y divide-black/20">
+                  {items.map((i: any, idx: number) => (
+                    <div key={idx} className="py-1 flex justify-between items-center">
+                      <span className="font-bold truncate max-w-[200px]">
+                        {i.variant?.product?.name || 'Denim Jeans'} (Sz {i.variant?.size})
+                      </span>
+                      <span className="font-mono font-bold">x{i.qty}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Return Address (Shipper) */}
+              <div className="text-[9px] text-slate-600 pt-1 border-t border-black/20 leading-tight">
+                <strong>Return / Shipper:</strong> Toland Private Limited, Barbigha Factory, Sheikhpura, Bihar - 811101 | GSTIN: 10AABCT1234F1Z8
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+              <button
+                type="button"
+                onClick={() => setShippingLabelOpen(false)}
+                className="px-4 py-2 rounded-xl border border-[#CFE0D5] text-xs font-bold text-muted hover:text-text"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-hover shadow-sm"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Print Thermal Label (4x6)</span>
               </button>
             </div>
           </div>

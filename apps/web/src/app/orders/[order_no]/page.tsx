@@ -2,6 +2,7 @@ import React from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import { CustomerCancelOrderButton } from '@/components/storefront/customer-cancel-order-button';
 import {
   CheckCircle2,
   Clock,
@@ -129,6 +130,11 @@ export default async function OrderTrackingPage({ params }: OrderTrackingPagePro
               <FileText className="w-3.5 h-3.5 text-primary" />
               <span>Tax Invoice (PDF)</span>
             </Link>
+            <CustomerCancelOrderButton
+              orderNo={orderRecord.order_no}
+              phone={address.phone || ''}
+              status={status}
+            />
           </div>
         </div>
 

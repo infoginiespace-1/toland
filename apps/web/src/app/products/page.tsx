@@ -24,6 +24,8 @@ interface ProductsPageProps {
     sort?: string;
     search?: string;
     q?: string;
+    in_stock?: string;
+    price_range?: string;
   };
 }
 
@@ -35,6 +37,8 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const selectedFit = searchParams.fit || '';
   const selectedWash = searchParams.wash || '';
   const selectedSort = searchParams.sort || 'featured';
+  const inStockOnly = searchParams.in_stock === 'true';
+  const selectedPriceRange = searchParams.price_range || '';
   const searchQuery = (searchParams.search || searchParams.q || '').trim().toLowerCase();
 
   // 1. Prepare products query
@@ -98,12 +102,30 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
     if (selectedWash && !variants.some((v: any) => v.wash?.toLowerCase() === selectedWash.toLowerCase())) {
       return false;
     }
+    if (inStockOnly && !variants.some((v: any) => Number(v.stock_qty || 0) > 0)) {
+      return false;
+    }
+    const price = Number(product.base_price || 0);
+    if (selectedPriceRange === 'under_1499' && price >= 1500) {
+      return false;
+    }
+    if (selectedPriceRange === '1500_1999' && (price < 1500 || price > 1999)) {
+      return false;
+    }
+    if (selectedPriceRange === '2000_plus' && price < 2000) {
+      return false;
+    }
     return true;
   });
 
   const SIZES = ['28', '30', '32', '34', '36', '38'];
   const FITS = ['Slim', 'Regular'];
   const WASHES = ['Raw', 'Medium', 'Dark'];
+  const PRICE_RANGES = [
+    { label: 'Under ₹1,499', val: 'under_1499' },
+    { label: '₹1,500 – ₹1,999', val: '1500_1999' },
+    { label: '₹2,000 & Above', val: '2000_plus' },
+  ];
 
   // Helper to build URL query
   const createFilterUrl = (key: string, value: string) => {
@@ -112,6 +134,8 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
     if (selectedSize) params.set('size', selectedSize);
     if (selectedFit) params.set('fit', selectedFit);
     if (selectedWash) params.set('wash', selectedWash);
+    if (inStockOnly) params.set('in_stock', 'true');
+    if (selectedPriceRange) params.set('price_range', selectedPriceRange);
     if (searchQuery) params.set('search', searchQuery);
     if (selectedSort && selectedSort !== 'featured') params.set('sort', selectedSort);
 
@@ -259,7 +283,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
               <Filter className="w-4 h-4 text-primary" />
               <h2 className="text-sm font-bold uppercase tracking-wider text-text">Refine Filters</h2>
             </div>
-            {(selectedCategory || selectedSize || selectedFit || selectedWash) && (
+            {(selectedCategory || selectedSize || selectedFit || selectedWash || inStockOnly || selectedPriceRange) && (
               <Link
                 href="/products"
                 className="text-xs font-bold text-danger hover:underline"
@@ -292,6 +316,52 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
                     }`}
                   >
                     {cat.name}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Availability (In-Stock Only) */}
+          <div className="pt-4 border-t border-border">
+            <Link
+              href={createFilterUrl('in_stock', inStockOnly ? '' : 'true')}
+              className={`flex items-center justify-between p-2.5 rounded-xl border text-xs font-bold transition-all ${
+                inStockOnly
+                  ? 'bg-primary text-white border-primary shadow-xs'
+                  : 'bg-surface border-border text-text hover:border-primary/50'
+              }`}
+            >
+              <span>In-Stock Only</span>
+              <span className={`text-3xs px-2 py-0.5 rounded-full ${inStockOnly ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800'}`}>
+                Fast Dispatch
+              </span>
+            </Link>
+          </div>
+
+          {/* Price Range Filter */}
+          <div className="space-y-2 pt-4 border-t border-border">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-muted">Price Range</h3>
+            <div className="space-y-1">
+              <Link
+                href={createFilterUrl('price_range', '')}
+                className={`block text-xs py-1.5 px-2.5 rounded-lg font-semibold transition-colors ${
+                  !selectedPriceRange ? 'bg-primary text-white' : 'text-muted hover:bg-surface'
+                }`}
+              >
+                All Prices
+              </Link>
+              {PRICE_RANGES.map((pr) => {
+                const isSelected = selectedPriceRange === pr.val;
+                return (
+                  <Link
+                    key={pr.val}
+                    href={createFilterUrl('price_range', pr.val)}
+                    className={`block text-xs py-1.5 px-2.5 rounded-lg font-semibold transition-colors ${
+                      isSelected ? 'bg-primary text-white' : 'text-muted hover:bg-surface'
+                    }`}
+                  >
+                    {pr.label}
                   </Link>
                 );
               })}

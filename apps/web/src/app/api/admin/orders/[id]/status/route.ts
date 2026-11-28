@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyApiPermission } from '@/lib/admin-auth';
@@ -53,6 +54,47 @@ export async function PUT(
       .eq('id', id);
 
     if (updateError) throw updateError;
+
+    // 2b. If cancelling order, restore product variants stock & record stock ledger reversals
+    if (status === 'cancelled' && order.status !== 'cancelled') {
+      const { data: orderItems } = await adminDb
+        .from('order_items')
+        .select('variant_id, qty')
+        .eq('order_id', id);
+
+      if (Array.isArray(orderItems)) {
+        for (const item of orderItems) {
+          if (!item.variant_id || !item.qty) continue;
+          const { data: varData } = await adminDb
+            .from('product_variants')
+            .select('stock_qty')
+            .eq('id', item.variant_id)
+            .single();
+
+          if (varData) {
+            const restoredStock = Number(varData.stock_qty || 0) + Number(item.qty);
+            await (adminDb.from('product_variants') as any)
+              .update({ stock_qty: restoredStock, updated_at: new Date().toISOString() })
+              .eq('id', item.variant_id);
+
+            await (adminDb.from('stock_ledger') as any).insert({
+              item_type: 'finished_variant',
+              item_id: item.variant_id,
+              change: Number(item.qty),
+              reason: 'order_cancellation_reversal',
+              ref_id: id,
+            });
+          }
+        }
+      }
+
+      try {
+        revalidatePath('/products');
+        revalidatePath('/');
+      } catch (cacheErr) {
+        console.warn('[Cancellation Revalidate Warning]:', cacheErr);
+      }
+    }
 
     // 3. Record status history
     await adminDb.from('order_status_history').insert({

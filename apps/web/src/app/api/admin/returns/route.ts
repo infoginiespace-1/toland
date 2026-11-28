@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyApiPermission } from '@/lib/admin-auth';
@@ -52,6 +53,45 @@ export async function PUT(request: NextRequest) {
       await (adminDb.from('orders') as any)
         .update({ status: 'returned', payment_status: 'refunded', updated_at: new Date().toISOString() })
         .eq('id', order_id);
+
+      // Restore finished garment stock to warehouse inventory
+      const { data: orderItems } = await adminDb
+        .from('order_items')
+        .select('variant_id, qty')
+        .eq('order_id', order_id);
+
+      if (Array.isArray(orderItems)) {
+        for (const item of orderItems) {
+          if (!item.variant_id || !item.qty) continue;
+          const { data: vData } = await adminDb
+            .from('product_variants')
+            .select('stock_qty')
+            .eq('id', item.variant_id)
+            .single();
+
+          if (vData) {
+            const restoredStock = Number(vData.stock_qty || 0) + Number(item.qty);
+            await (adminDb.from('product_variants') as any)
+              .update({ stock_qty: restoredStock, updated_at: new Date().toISOString() })
+              .eq('id', item.variant_id);
+
+            await (adminDb.from('stock_ledger') as any).insert({
+              item_type: 'finished_variant',
+              item_id: item.variant_id,
+              change: Number(item.qty),
+              reason: 'return_restock',
+              ref_id: order_id,
+            });
+          }
+        }
+      }
+
+      try {
+        revalidatePath('/products');
+        revalidatePath('/');
+      } catch (cacheErr) {
+        console.warn('[Returns Revalidate Warning]:', cacheErr);
+      }
     }
 
     const address = order.address_snapshot || {};

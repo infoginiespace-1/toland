@@ -146,33 +146,27 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const cleanCode = code.trim().toUpperCase();
     if (!cleanCode) return { success: false, message: 'Please enter a coupon code' };
 
-    if (cleanCode === 'TOLAND10') {
-      if (subtotal < 999) {
-        return { success: false, message: 'Minimum order amount for TOLAND10 is ₹999' };
-      }
-      setCoupon({
-        code: 'TOLAND10',
-        type: 'percentage',
-        value: 10,
-        discountAmount: Math.round((subtotal * 10) / 100),
+    try {
+      const res = await fetch('/api/coupons/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: cleanCode, subtotal }),
       });
-      return { success: true, message: 'Coupon TOLAND10 applied: 10% Discount!' };
-    }
-
-    if (cleanCode === 'FLAT200') {
-      if (subtotal < 1499) {
-        return { success: false, message: 'Minimum order amount for FLAT200 is ₹1,499' };
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        return { success: false, message: data.error || 'Invalid or expired coupon code' };
       }
-      setCoupon({
-        code: 'FLAT200',
-        type: 'fixed',
-        value: 200,
-        discountAmount: 200,
-      });
-      return { success: true, message: 'Coupon FLAT200 applied: ₹200 OFF!' };
-    }
 
-    return { success: false, message: 'Invalid or expired coupon code' };
+      setCoupon({
+        code: data.coupon.code,
+        type: data.coupon.type,
+        value: data.coupon.value,
+        discountAmount: data.coupon.discountAmount,
+      });
+      return { success: true, message: data.message };
+    } catch (e: any) {
+      return { success: false, message: e?.message || 'Error applying coupon' };
+    }
   };
 
   const removeCoupon = () => {

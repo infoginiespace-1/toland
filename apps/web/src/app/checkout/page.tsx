@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCart } from '@/context/cart-context';
+import { createClient } from '@/lib/supabase/client';
 import {
   CreditCard,
   Banknote,
@@ -18,6 +19,7 @@ import {
   QrCode,
   Copy,
   Check,
+  Sparkles,
 } from 'lucide-react';
 
 export default function CheckoutPage() {
@@ -35,6 +37,47 @@ export default function CheckoutPage() {
     pincode: '',
     paymentMethod: 'cod' as 'cod' | 'razorpay' | 'upi',
   });
+
+  const [userId, setUserId] = useState<string | null>(null);
+  const [savedAddress, setSavedAddress] = useState<any | null>(null);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(async ({ data: authData }) => {
+      const user = authData?.user;
+      if (user) {
+        setUserId(user.id);
+        const { data: pastOrder } = (await supabase
+          .from('orders')
+          .select('address_snapshot')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()) as any;
+
+        if (pastOrder?.address_snapshot) {
+          setSavedAddress(pastOrder.address_snapshot);
+        }
+      }
+    });
+  }, []);
+
+  const handleUseSavedAddress = () => {
+    if (!savedAddress) return;
+    setFormData((prev) => ({
+      ...prev,
+      customerName: savedAddress.name || prev.customerName,
+      phone: (savedAddress.phone || '').replace(/\D/g, '').slice(-10) || prev.phone,
+      email: savedAddress.email || prev.email,
+      addressLine1: savedAddress.line1 || prev.addressLine1,
+      addressLine2: savedAddress.line2 || prev.addressLine2,
+      city: savedAddress.city || prev.city,
+      state: savedAddress.state || prev.state,
+      pincode: savedAddress.pincode || prev.pincode,
+    }));
+  };
+
+  const isRazorpayConfigured = Boolean(process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID);
 
   const [upiUtr, setUpiUtr] = useState('');
   const [copiedUpi, setCopiedUpi] = useState(false);
@@ -108,6 +151,7 @@ export default function CheckoutPage() {
         pincode: cleanPin,
         paymentMethod: formData.paymentMethod,
         upiTransactionId: formData.paymentMethod === 'upi' ? upiUtr.trim() : undefined,
+        userId: userId || undefined,
         couponCode: coupon?.code,
         items: items.map((i) => ({
           variantId: i.variantId,
@@ -182,9 +226,21 @@ export default function CheckoutPage() {
 
           {/* 1. Contact & Shipping Address Card */}
           <div className="p-6 rounded-2xl bg-surface-alt border border-border space-y-4 shadow-xs">
-            <div className="flex items-center gap-2 pb-3 border-b border-border">
-              <Truck className="w-4 h-4 text-primary" />
-              <h2 className="text-sm font-bold uppercase tracking-wider text-text">1. Delivery Address</h2>
+            <div className="flex items-center justify-between pb-3 border-b border-border">
+              <div className="flex items-center gap-2">
+                <Truck className="w-4 h-4 text-primary" />
+                <h2 className="text-sm font-bold uppercase tracking-wider text-text">1. Delivery Address</h2>
+              </div>
+              {savedAddress && (
+                <button
+                  type="button"
+                  onClick={handleUseSavedAddress}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#E3EFE7] text-primary text-2xs font-bold hover:bg-primary/20 transition-colors cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Fill Saved Address</span>
+                </button>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -460,10 +516,12 @@ export default function CheckoutPage() {
 
               {/* Online Payment via Razorpay */}
               <label
-                className={`p-4 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
-                  formData.paymentMethod === 'razorpay'
-                    ? 'bg-surface border-primary shadow-xs ring-1 ring-primary'
-                    : 'bg-surface/50 border-border hover:bg-surface'
+                className={`p-4 rounded-xl border flex items-center justify-between transition-all ${
+                  !isRazorpayConfigured
+                    ? 'bg-surface/30 border-border/60 opacity-60 cursor-not-allowed'
+                    : formData.paymentMethod === 'razorpay'
+                    ? 'bg-surface border-primary shadow-xs ring-1 ring-primary cursor-pointer'
+                    : 'bg-surface/50 border-border hover:bg-surface cursor-pointer'
                 }`}
               >
                 <div className="flex items-center gap-3">
@@ -471,20 +529,33 @@ export default function CheckoutPage() {
                     type="radio"
                     name="paymentMethod"
                     value="razorpay"
+                    disabled={!isRazorpayConfigured}
                     checked={formData.paymentMethod === 'razorpay'}
-                    onChange={() => setFormData({ ...formData, paymentMethod: 'razorpay' })}
-                    className="accent-primary w-4 h-4"
+                    onChange={() => {
+                      if (isRazorpayConfigured) {
+                        setFormData({ ...formData, paymentMethod: 'razorpay' });
+                      }
+                    }}
+                    className="accent-primary w-4 h-4 disabled:opacity-50"
                   />
                   <div>
                     <div className="text-xs font-bold text-text flex items-center gap-2">
                       <CreditCard className="w-4 h-4 text-primary" />
-                      <span>Online Payment (UPI, Cards, Netbanking)</span>
+                      <span>Online Gateway (Cards / Netbanking)</span>
                     </div>
-                    <div className="text-3xs text-muted mt-0.5">Pay instantly via Google Pay, PhonePe, Paytm or Card.</div>
+                    <div className="text-3xs text-muted mt-0.5">
+                      {!isRazorpayConfigured
+                        ? 'Gateway maintenance in progress. Please use Instant UPI QR or COD below.'
+                        : 'Pay securely via credit/debit card, netbanking, or UPI.'}
+                    </div>
                   </div>
                 </div>
-                <span className="text-2xs font-bold uppercase text-primary bg-primary/10 px-2 py-0.5 rounded">
-                  Instant Dispatch
+                <span className={`text-2xs font-bold uppercase px-2 py-0.5 rounded ${
+                  !isRazorpayConfigured
+                    ? 'bg-amber-100 text-amber-800'
+                    : 'text-primary bg-primary/10'
+                }`}>
+                  {!isRazorpayConfigured ? 'Use UPI / COD' : 'Instant Dispatch'}
                 </span>
               </label>
             </div>

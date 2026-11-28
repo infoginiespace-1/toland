@@ -29,6 +29,7 @@ import {
   MapPin,
   Heart,
   Scale,
+  Bell,
 } from 'lucide-react';
 
 interface ProductDetailViewProps {
@@ -104,6 +105,43 @@ export function ProductDetailView({
   const [reviewComment, setReviewComment] = useState('');
   const [reviewImageUrl, setReviewImageUrl] = useState('');
   const [reviewError, setReviewError] = useState<string | null>(null);
+
+  // Out of Stock Restock Alert state
+  const [notifyPhone, setNotifyPhone] = useState('');
+  const [notifyLoading, setNotifyLoading] = useState(false);
+  const [notifyFeedback, setNotifyFeedback] = useState<string | null>(null);
+
+  const handleNotifySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const clean = notifyPhone.replace(/\D/g, '').slice(-10);
+    if (!clean || clean.length < 10) {
+      setNotifyFeedback('Please enter a valid 10-digit WhatsApp number.');
+      return;
+    }
+    try {
+      setNotifyLoading(true);
+      setNotifyFeedback(null);
+      const res = await fetch('/api/products/notify-stock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: clean,
+          productId: product.id,
+          variantId: selectedVariant?.id,
+          productName: product.name,
+          size: selectedVariant?.size,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to register alert');
+      setNotifyFeedback(data.message);
+      setNotifyPhone('');
+    } catch (err: any) {
+      setNotifyFeedback(err?.message || 'Error registering alert');
+    } finally {
+      setNotifyLoading(false);
+    }
+  };
 
   const selectedVariant = variants.find((v) => v.id === selectedVariantId) || variants[0];
   const discountPercent = product.mrp
@@ -613,27 +651,72 @@ export function ProductDetailView({
 
           {/* Actions: Add to Cart & Buy Now */}
           <div ref={mainActionsRef} className="space-y-3 pt-2">
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={handleAddToCart}
-                disabled={isOutOfStock}
-                className="w-full py-3.5 px-4 rounded-xl border border-border bg-white text-text text-xs font-bold uppercase tracking-wider hover:bg-surface-alt transition-colors shadow-subtle flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-              >
-                <ShoppingBag className="w-4 h-4 text-primary" />
-                <span>Add to Cart</span>
-              </button>
+            {isOutOfStock ? (
+              <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs space-y-3">
+                <div className="flex items-center gap-2 font-bold text-amber-900">
+                  <Bell className="w-4 h-4 text-amber-700" />
+                  <span>Waist Size {selectedVariant?.size || 'This style'} is Currently Sold Out</span>
+                </div>
+                <p className="text-3xs text-amber-800 leading-relaxed">
+                  Our Sheikhpura unit produces fresh selvedge denim weekly. Enter your WhatsApp number to get an instant priority alert the moment this size finishes packing:
+                </p>
+                {notifyFeedback ? (
+                  <div className="p-3 rounded-xl bg-white border border-amber-200 text-xs font-bold text-emerald-800 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>{notifyFeedback}</span>
+                  </div>
+                ) : (
+                  <form onSubmit={handleNotifySubmit} className="flex gap-2">
+                    <div className="relative flex-1">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-2xs font-mono text-muted font-bold">
+                        +91
+                      </span>
+                      <input
+                        type="tel"
+                        maxLength={10}
+                        required
+                        value={notifyPhone}
+                        onChange={(e) => setNotifyPhone(e.target.value)}
+                        placeholder="10-digit WhatsApp Number"
+                        className="w-full pl-10 pr-3 py-2.5 rounded-xl bg-white border border-amber-300 text-xs font-mono text-text focus:outline-none focus:border-primary font-bold"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={notifyLoading}
+                      className="px-4 py-2.5 rounded-xl bg-primary text-white text-xs font-bold uppercase tracking-wider hover:bg-primary-hover transition-colors shrink-0 disabled:opacity-50 flex items-center gap-1.5"
+                    >
+                      {notifyLoading ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Bell className="w-3.5 h-3.5" />
+                      )}
+                      <span>Notify Me</span>
+                    </button>
+                  </form>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={handleAddToCart}
+                  className="w-full py-3.5 px-4 rounded-xl border border-border bg-white text-text text-xs font-bold uppercase tracking-wider hover:bg-surface-alt transition-colors shadow-subtle flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <ShoppingBag className="w-4 h-4 text-primary" />
+                  <span>Add to Cart</span>
+                </button>
 
-              <button
-                type="button"
-                onClick={handleBuyNow}
-                disabled={isOutOfStock}
-                className="w-full py-3.5 px-4 rounded-xl bg-primary text-white text-xs font-bold uppercase tracking-wider hover:bg-primary-hover transition-colors shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-              >
-                <Zap className="w-4 h-4" />
-                <span>Buy It Now</span>
-              </button>
-            </div>
+                <button
+                  type="button"
+                  onClick={handleBuyNow}
+                  className="w-full py-3.5 px-4 rounded-xl bg-primary text-white text-xs font-bold uppercase tracking-wider hover:bg-primary-hover transition-colors shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Zap className="w-4 h-4" />
+                  <span>Buy It Now</span>
+                </button>
+              </div>
+            )}
 
             {/* WhatsApp Inquiry Button */}
             <a

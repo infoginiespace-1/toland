@@ -13,6 +13,7 @@ const placeOrderSchema = z.object({
   pincode: z.string().regex(/^[1-9][0-9]{5}$/, 'Valid 6-digit Indian PIN code required'),
   paymentMethod: z.enum(['cod', 'razorpay', 'upi']),
   upiTransactionId: z.string().optional(),
+  userId: z.string().uuid().optional(),
   items: z.array(
     z.object({
       variantId: z.string().uuid(),
@@ -49,21 +50,48 @@ export async function POST(request: Request) {
       pincode,
       paymentMethod,
       upiTransactionId,
+      userId,
       items,
       couponCode,
     } = parsed.data;
 
     const supabase = createAdminClient();
 
-    // 1. Calculate Financials
+    // 1. Calculate Financials & Database Coupon Validation
     const subtotal = items.reduce((sum, item) => sum + item.price * item.qty, 0);
     const shipping = subtotal >= 999 ? 0 : 99;
 
     let discount = 0;
-    if (couponCode === 'TOLAND10' && subtotal >= 999) {
-      discount = Math.round((subtotal * 10) / 100);
-    } else if (couponCode === 'FLAT200' && subtotal >= 1499) {
-      discount = 200;
+    let appliedCouponId: string | null = null;
+
+    if (couponCode) {
+      const cleanCode = couponCode.trim().toUpperCase();
+      const { data: dbCoupon } = await supabase
+        .from('coupons')
+        .select('*')
+        .ilike('code', cleanCode)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (dbCoupon) {
+        const now = new Date();
+        const isValidDate =
+          (!dbCoupon.valid_from || new Date(dbCoupon.valid_from) <= now) &&
+          (!dbCoupon.valid_to || new Date(dbCoupon.valid_to) >= now);
+        const meetsMinAmount = subtotal >= Number(dbCoupon.min_amount || 0);
+        const withinUsageLimit =
+          dbCoupon.usage_limit === null ||
+          Number(dbCoupon.used_count || 0) < Number(dbCoupon.usage_limit);
+
+        if (isValidDate && meetsMinAmount && withinUsageLimit) {
+          appliedCouponId = dbCoupon.id;
+          if (dbCoupon.type === 'percentage') {
+            discount = Math.round((subtotal * Number(dbCoupon.value)) / 100);
+          } else {
+            discount = Math.min(Number(dbCoupon.value), subtotal);
+          }
+        }
+      }
     }
 
     const total = Math.max(0, subtotal - discount + shipping);
@@ -94,16 +122,18 @@ export async function POST(request: Request) {
       state,
       pincode,
       country: 'India',
+      coupon_code: couponCode || null,
     };
 
-    // 3. Insert into public.orders
+    // 3. Insert into public.orders (All storefront orders default to payment_status: 'pending')
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .insert({
         order_no: orderNo,
+        user_id: userId || null,
         status: 'confirmed',
         payment_method: paymentMethod,
-        payment_status: paymentMethod === 'cod' || paymentMethod === 'upi' ? 'pending' : 'paid',
+        payment_status: 'pending',
         subtotal,
         discount,
         shipping,
@@ -117,6 +147,23 @@ export async function POST(request: Request) {
     if (orderError || !order) {
       console.error('[Checkout API Error]: Failed to create order', orderError);
       return NextResponse.json({ error: 'Failed to place order in database' }, { status: 500 });
+    }
+
+    // Increment coupon used_count if applied
+    if (appliedCouponId) {
+      try {
+        const { data: cData } = await supabase
+          .from('coupons')
+          .select('used_count')
+          .eq('id', appliedCouponId)
+          .single();
+        const currentCount = Number(cData?.used_count || 0);
+        await (supabase.from('coupons') as any)
+          .update({ used_count: currentCount + 1 })
+          .eq('id', appliedCouponId);
+      } catch (cErr) {
+        console.warn('[Coupon Count Update Warning]:', cErr);
+      }
     }
 
     // 4. Insert into public.order_items
