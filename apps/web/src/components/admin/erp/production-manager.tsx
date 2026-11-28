@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
   Scissors,
   Sparkles,
@@ -18,12 +19,29 @@ import {
   Printer,
   Ban,
   QrCode,
+  ExternalLink,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface Product {
   id: string;
   name: string;
   slug: string;
+  is_active?: boolean;
+  base_price?: number;
+  mrp?: number;
+  images?: Array<{ id: string; path: string }>;
+}
+
+interface QcInspectionRecord {
+  id: string;
+  qc_no: string;
+  status: 'passed' | 'rework' | 'failed';
+  pass_qty?: number;
+  rework_qty?: number;
+  reject_qty?: number;
+  production_order_id?: string;
+  inspection_type?: string;
 }
 
 interface Variant {
@@ -105,6 +123,7 @@ export function ProductionManager({
   products,
   variants,
   boms = [],
+  qcInspections = [],
   initialProductId,
   initialVariantId,
 }: {
@@ -112,6 +131,7 @@ export function ProductionManager({
   products: Product[];
   variants: Variant[];
   boms?: BomRequirement[];
+  qcInspections?: QcInspectionRecord[];
   initialProductId?: string;
   initialVariantId?: string;
 }) {
@@ -140,6 +160,31 @@ export function ProductionManager({
   const [completedSizeMap, setCompletedSizeMap] = useState<Record<string, string>>({});
   const [stageLoading, setStageLoading] = useState(false);
   const [stageError, setStageError] = useState<string | null>(null);
+  const [overrideQcGate, setOverrideQcGate] = useState(false);
+
+  const [publishingId, setPublishingId] = useState<string | null>(null);
+
+  const handleToggleProductActive = async (targetProductId: string, nextActive: boolean) => {
+    try {
+      setPublishingId(targetProductId);
+      const res = await fetch('/api/admin/products', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: targetProductId,
+          is_active: nextActive,
+          action: 'toggle_active',
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to update storefront visibility');
+      router.refresh();
+    } catch (err: any) {
+      alert(err?.message || 'Error updating storefront visibility');
+    } finally {
+      setPublishingId(null);
+    }
+  };
 
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [printBatch, setPrintBatch] = useState<ProductionOrder | null>(null);
@@ -252,6 +297,7 @@ export function ProductionManager({
 
   const handleOpenStageModal = (order: ProductionOrder, stage: ProductionStage) => {
     setStageError(null);
+    setOverrideQcGate(false);
     setActiveOrder(order);
     setActiveStage(stage);
     setQtyOut(String(stage.qty_out || stage.qty_in || 0));
@@ -305,6 +351,7 @@ export function ProductionManager({
           assigned_to: assignedTo,
           mark_stage_complete: markComplete,
           completed_size_allocations: completedSizeAllocs,
+          override_qc_gate: overrideQcGate,
         }),
       });
 
@@ -695,6 +742,82 @@ export function ProductionManager({
                       <span className="whitespace-pre-line">{order.notes}</span>
                     </div>
                   )}
+
+                  {/* Storefront Readiness & 1-Click Publishing Banner */}
+                  <div className="mt-4 p-4 rounded-xl border border-[#CFE0D5] bg-[#F0F7F2]/60 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-gray-900">
+                        <Package className="w-4 h-4 text-[#14532D]" />
+                        <span>Finished Ready:</span>
+                        <span className="font-mono text-[#14532D] font-black">
+                          {order.completed_qty || 0} pcs
+                        </span>
+                      </div>
+                      <span className="text-gray-400">•</span>
+                      <div className="flex items-center gap-1.5 text-xs text-gray-700">
+                        <span>Photos:</span>
+                        <span className="font-mono font-bold">
+                          {order.product?.images?.length || 0} uploaded
+                        </span>
+                      </div>
+                      <span className="text-gray-400">•</span>
+                      <div className="flex items-center gap-1.5 text-xs">
+                        <span className="text-gray-700">Storefront:</span>
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                            order.product?.is_active
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-amber-100 text-amber-800'
+                          }`}
+                        >
+                          {order.product?.is_active ? 'Live on Storefront' : 'Draft / Hidden'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {order.product?.is_active ? (
+                        <>
+                          {order.product?.slug && (
+                            <Link
+                              href={`/products/${order.product.slug}`}
+                              target="_blank"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-[#CFE0D5] text-xs font-bold text-[#14532D] hover:bg-[#E3EFE7] transition shadow-xs"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              <span>View Live Storefront</span>
+                            </Link>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleToggleProductActive(order.product_id, false)}
+                            disabled={publishingId === order.product_id}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50 text-xs font-bold text-amber-800 hover:bg-amber-100 transition disabled:opacity-50"
+                          >
+                            {publishingId === order.product_id ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <span>Set to Draft</span>
+                            )}
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleToggleProductActive(order.product_id, true)}
+                          disabled={publishingId === order.product_id}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#14532D] text-white text-xs font-bold uppercase tracking-wider hover:bg-[#14532D]/90 transition shadow-xs disabled:opacity-50"
+                        >
+                          {publishingId === order.product_id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Sparkles className="w-3.5 h-3.5" />
+                          )}
+                          <span>1-Click Publish to Storefront</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             );
@@ -1008,6 +1131,56 @@ export function ProductionManager({
                   className="w-full px-3 py-2 text-sm rounded-lg border border-[#CFE0D5]"
                 />
               </div>
+
+              {activeStage.stage === 'packing' && (() => {
+                const batchQcs = qcInspections.filter(
+                  (q) => q.production_order_id === activeOrder.id
+                );
+                const hasPassed = batchQcs.some(
+                  (q) => q.status === 'passed' && Number(q.pass_qty || 0) > 0
+                );
+
+                return (
+                  <div className="p-3.5 rounded-xl border text-xs space-y-2 bg-amber-50/70 border-amber-200 text-amber-900">
+                    <div className="flex items-center justify-between font-bold">
+                      <span className="flex items-center gap-1.5 text-amber-800">
+                        <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                        Mandatory AQL Packing QC Gate
+                      </span>
+                      <Link
+                        href="/admin/erp/qc"
+                        target="_blank"
+                        className="text-[11px] text-[#14532D] underline inline-flex items-center gap-0.5"
+                      >
+                        <span>Open QC Lab</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </Link>
+                    </div>
+
+                    {hasPassed ? (
+                      <div className="p-2 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span>AQL Packing QC Passed: Ready to box and credit finished inventory.</span>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="text-amber-800 text-[11px]">
+                          No passed final garment QC inspection recorded for this batch ({activeOrder.order_no}). Packing uninspected pieces may result in customer quality complaints.
+                        </p>
+                        <label className="flex items-center gap-2 pt-1 text-amber-950 font-bold cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={overrideQcGate}
+                            onChange={(e) => setOverrideQcGate(e.target.checked)}
+                            className="w-4 h-4 rounded text-[#14532D] focus:ring-[#14532D] accent-[#14532D]"
+                          />
+                          <span>Override QC Gate (Approved by Production Floor Manager)</span>
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               <div className="flex items-center gap-2 pt-2">
                 <input

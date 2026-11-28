@@ -13,6 +13,12 @@ import {
   CheckCircle2,
   AlertTriangle,
   Loader2,
+  ExternalLink,
+  ShieldAlert,
+  TrendingUp,
+  Percent,
+  Scissors,
+  Check,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -37,9 +43,15 @@ interface ProductFormProps {
   initialData?: any;
   categories: CategoryOption[];
   isEdit?: boolean;
+  bomsData?: any[];
 }
 
-export function ProductForm({ initialData, categories, isEdit = false }: ProductFormProps) {
+export function ProductForm({
+  initialData,
+  categories,
+  isEdit = false,
+  bomsData = [],
+}: ProductFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -121,6 +133,57 @@ export function ProductForm({ initialData, categories, isEdit = false }: Product
     setVariants(generated);
   };
 
+  // Manufacturing COGS & Profit Margin Calculations
+  const bomRawCost = (bomsData || []).reduce((acc: number, item: any) => {
+    const qty = Number(item.qty_per_piece || 0);
+    const scrapPct = Number(item.scrap_percent || 0);
+    const unitPrice = Number(item.raw_material?.unit_price || 0);
+    return acc + qty * (1 + scrapPct / 100) * unitPrice;
+  }, 0);
+
+  const laborCost = Number(initialData?.labor_cost_per_piece || 0);
+  const overheadCost = Number(initialData?.overhead_cost_per_piece || 0);
+  const landedMfgCost = Math.round((bomRawCost + laborCost + overheadCost) * 100) / 100;
+
+  const currentPrice = Number(basePrice || 0);
+  const grossProfit = currentPrice > 0 && landedMfgCost > 0 ? currentPrice - landedMfgCost : 0;
+  const marginPct = currentPrice > 0 && landedMfgCost > 0 ? Math.round((grossProfit / currentPrice) * 100) : 0;
+  const isLossMaking = landedMfgCost > 0 && currentPrice > 0 && currentPrice < landedMfgCost;
+
+  // Pipeline Readiness Checks
+  const totalStockQty = variants.reduce((s, v) => s + (Number(v.stock_qty) || 0), 0);
+  const hasBom = bomsData.length > 0;
+  const hasImages = images.length > 0;
+  const hasStock = totalStockQty > 0;
+
+  const pipelineSteps = [
+    {
+      label: '1. Style Draft',
+      status: isEdit ? 'done' : 'current',
+      desc: name ? name : 'Define master style',
+    },
+    {
+      label: '2. BOM Recipe',
+      status: hasBom ? 'done' : 'pending',
+      desc: hasBom ? `${bomsData.length} Raw Materials mapped` : 'Map denim & trims in ERP BOM',
+    },
+    {
+      label: '3. Cutting & Mfg',
+      status: hasStock || isEdit ? 'done' : 'pending',
+      desc: 'Factory batch cutting & wash',
+    },
+    {
+      label: '4. Pack & Stock',
+      status: hasStock ? 'done' : 'pending',
+      desc: hasStock ? `${totalStockQty} pcs in warehouse` : 'No finished stock ready',
+    },
+    {
+      label: '5. Storefront',
+      status: isActive ? 'done' : 'pending',
+      desc: isActive ? 'Live for customer orders' : 'Draft mode (Hidden)',
+    },
+  ];
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -175,7 +238,7 @@ export function ProductForm({ initialData, categories, isEdit = false }: Product
         throw new Error(data.error || 'Failed to save product');
       }
 
-      setSuccess(`Product ${isEdit ? 'updated' : 'created'} successfully!`);
+      setSuccess(`Product ${isEdit ? 'updated' : 'created'} successfully! Storefront cache revalidated.`);
       setTimeout(() => {
         router.push('/admin/products');
         router.refresh();
@@ -200,16 +263,37 @@ export function ProductForm({ initialData, categories, isEdit = false }: Product
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div>
-            <h1 className="text-2xl font-black text-text tracking-tight">
-              {isEdit ? `Edit Product: ${initialData?.name}` : 'Create New Product'}
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-black text-text tracking-tight">
+                {isEdit ? `Edit Product: ${initialData?.name}` : 'Create New Product'}
+              </h1>
+              {isEdit && (
+                <span
+                  className={`px-2 py-0.5 rounded text-3xs font-black uppercase tracking-wider ${
+                    isActive ? 'bg-success/20 text-success' : 'bg-warning/20 text-amber-800'
+                  }`}
+                >
+                  {isActive ? 'Storefront Live' : 'Draft / Hidden'}
+                </span>
+              )}
+            </div>
             <p className="text-xs text-muted">
-              Configure manufacturing specs, image gallery, and inventory variants.
+              Configure manufacturing specs, image gallery, BOM costing, and inventory variants.
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
+          {isEdit && slug && (
+            <Link
+              href={`/products/${slug}`}
+              target="_blank"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#CFE0D5] text-xs font-bold text-muted hover:text-text hover:bg-white transition-colors"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>Preview Storefront</span>
+            </Link>
+          )}
           <Link
             href="/admin/products"
             className="px-4 py-2 rounded-xl border border-[#CFE0D5] text-xs font-bold text-muted hover:text-text hover:bg-white transition-colors"
@@ -231,6 +315,53 @@ export function ProductForm({ initialData, categories, isEdit = false }: Product
         </div>
       </div>
 
+      {/* Manufacturing-to-Storefront Pipeline Stepper */}
+      <div className="bg-white rounded-2xl p-5 border border-[#CFE0D5] shadow-xs">
+        <div className="flex items-center justify-between mb-3 border-b border-[#CFE0D5] pb-2">
+          <div className="flex items-center gap-2">
+            <Scissors className="w-4 h-4 text-primary" />
+            <h2 className="text-xs font-black uppercase tracking-wider text-text">
+              Manufacturing to Storefront Lifecycle
+            </h2>
+          </div>
+          <span className="text-3xs font-mono text-muted">
+            Factory Unit: Barbigha, Sheikhpura
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
+          {pipelineSteps.map((step, idx) => {
+            const isDone = step.status === 'done';
+            return (
+              <div
+                key={idx}
+                className={`p-3 rounded-xl border transition-all ${
+                  isDone
+                    ? 'bg-emerald-50/50 border-emerald-200'
+                    : 'bg-[#F0F7F2]/40 border-[#CFE0D5]'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span
+                    className={`text-3xs font-black uppercase tracking-wider ${
+                      isDone ? 'text-emerald-800' : 'text-muted'
+                    }`}
+                  >
+                    {step.label}
+                  </span>
+                  {isDone ? (
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  ) : (
+                    <div className="w-2.5 h-2.5 rounded-full bg-[#CFE0D5]" />
+                  )}
+                </div>
+                <p className="text-3xs text-muted leading-tight">{step.desc}</p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Notifications */}
       {error && (
         <div className="p-4 rounded-xl bg-danger/10 border border-danger/30 text-danger text-xs font-semibold flex items-center gap-2">
@@ -246,7 +377,7 @@ export function ProductForm({ initialData, categories, isEdit = false }: Product
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column (2 Cols): Basic Info & Variants */}
+        {/* Left Column (2 Cols): Basic Info, Pricing & Variants */}
         <div className="lg:col-span-2 space-y-6">
           {/* 1. General Details Card */}
           <div className="bg-white rounded-2xl p-6 border border-[#CFE0D5] shadow-xs space-y-4">
@@ -317,11 +448,22 @@ export function ProductForm({ initialData, categories, isEdit = false }: Product
             </div>
           </div>
 
-          {/* 2. Pricing & Taxes Card */}
+          {/* 2. Pricing & Live Manufacturing COGS Analysis Card */}
           <div className="bg-white rounded-2xl p-6 border border-[#CFE0D5] shadow-xs space-y-4">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-primary border-b border-[#CFE0D5] pb-2">
-              Pricing & Statutory Taxes
-            </h2>
+            <div className="flex items-center justify-between border-b border-[#CFE0D5] pb-2">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-primary">
+                Pricing & Landed Manufacturing COGS
+              </h2>
+              {hasBom && (
+                <Link
+                  href="/admin/erp/bom"
+                  className="text-3xs font-bold text-primary hover:underline inline-flex items-center gap-1"
+                >
+                  <span>Edit ERP BOM ({bomsData.length} items)</span>
+                  <ExternalLink className="w-3 h-3" />
+                </Link>
+              )}
+            </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div>
@@ -383,6 +525,55 @@ export function ProductForm({ initialData, categories, isEdit = false }: Product
                 />
               </div>
             </div>
+
+            {/* Live COGS & Profit Margin Breakdown */}
+            <div className="p-4 rounded-xl bg-[#F0F7F2] border border-[#CFE0D5] space-y-3">
+              <div className="flex items-center justify-between text-xs font-bold text-text">
+                <span className="flex items-center gap-1.5 text-primary">
+                  <TrendingUp className="w-4 h-4" />
+                  Unit Economics & Landed Cost Breakdown:
+                </span>
+                <span className="font-mono text-xs">
+                  Factory Landed Cost: <strong className="text-text">₹{landedMfgCost.toFixed(2)}</strong>
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-3xs font-mono">
+                <div className="p-2 bg-white rounded-lg border border-[#CFE0D5]">
+                  <span className="text-muted block">BOM Raw Material</span>
+                  <span className="font-bold text-text">₹{bomRawCost.toFixed(2)}</span>
+                </div>
+                <div className="p-2 bg-white rounded-lg border border-[#CFE0D5]">
+                  <span className="text-muted block">CMT Labor Rate</span>
+                  <span className="font-bold text-text">₹{laborCost.toFixed(2)}</span>
+                </div>
+                <div className="p-2 bg-white rounded-lg border border-[#CFE0D5]">
+                  <span className="text-muted block">Factory Overheads</span>
+                  <span className="font-bold text-text">₹{overheadCost.toFixed(2)}</span>
+                </div>
+                <div
+                  className={`p-2 rounded-lg border ${
+                    isLossMaking
+                      ? 'bg-rose-50 border-rose-200 text-rose-800'
+                      : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                  }`}
+                >
+                  <span className="block opacity-80">Gross Profit Margin</span>
+                  <span className="font-bold">
+                    ₹{grossProfit.toFixed(0)} ({marginPct}%)
+                  </span>
+                </div>
+              </div>
+
+              {isLossMaking && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-700 flex items-center gap-2">
+                  <ShieldAlert className="w-4 h-4 shrink-0 text-rose-600" />
+                  <span>
+                    <strong>Margin Warning:</strong> Base Selling Price (₹{currentPrice}) is below factory manufacturing cost (₹{landedMfgCost.toFixed(2)}). Selling this style will result in a loss of ₹{Math.abs(grossProfit).toFixed(0)} per piece.
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* 3. Variants Matrix Builder Card */}
@@ -393,7 +584,7 @@ export function ProductForm({ initialData, categories, isEdit = false }: Product
                   Inventory & Size Variants ({variants.length})
                 </h2>
                 <p className="text-3xs text-muted">
-                  Specify sizes, fits, washes, and warehouse stock units.
+                  Total Finished Stock Available: <strong>{totalStockQty} pcs</strong>
                 </p>
               </div>
 
@@ -512,7 +703,9 @@ export function ProductForm({ initialData, categories, isEdit = false }: Product
               <label className="flex items-center justify-between p-3 rounded-xl bg-[#F0F7F2] border border-[#CFE0D5] cursor-pointer">
                 <div>
                   <span className="text-xs font-bold text-text block">Active in Storefront</span>
-                  <span className="text-3xs text-muted">Visible for customer orders</span>
+                  <span className="text-3xs text-muted">
+                    {isActive ? 'Visible to all customers & indexed' : 'Draft / Staff preview only'}
+                  </span>
                 </div>
                 <input
                   type="checkbox"
@@ -537,11 +730,18 @@ export function ProductForm({ initialData, categories, isEdit = false }: Product
             </div>
           </div>
 
-          {/* Supabase Storage Media Picker Card (Rule #6 compliant!) */}
+          {/* Supabase Storage Media Picker Card */}
           <div className="bg-white rounded-2xl p-6 border border-[#CFE0D5] shadow-xs space-y-4">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-primary border-b border-[#CFE0D5] pb-2">
-              Product Images (Supabase Storage)
-            </h2>
+            <div className="flex items-center justify-between border-b border-[#CFE0D5] pb-2">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-primary">
+                Product Images ({images.length})
+              </h2>
+              {images.length === 0 && (
+                <span className="text-3xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded">
+                  Photos Required
+                </span>
+              )}
+            </div>
 
             <MultiImageUploadPicker
               bucket="product-images"

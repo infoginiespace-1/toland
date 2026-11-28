@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { verifyApiPermission } from '@/lib/admin-auth';
 
@@ -24,8 +25,8 @@ export async function GET(request: NextRequest) {
       .from('production_orders')
       .select(`
         *,
-        product:products (id, name, slug),
-        variant:product_variants (id, size, fit, wash, sku),
+        product:products (id, name, slug, is_active, base_price, mrp, images:product_images(id, path)),
+        variant:product_variants (id, size, fit, wash, sku, stock_qty),
         stages:production_stages (*)
       `)
       .order('created_at', { ascending: false });
@@ -407,6 +408,30 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Stage not found' }, { status: 404 });
     }
 
+    // MANDATORY / WARNING QC GATE BEFORE PACKING COMPLETION
+    if (mark_stage_complete && currentStage.stage === 'packing') {
+      const { data: qcs } = (await supabase
+        .from('erp_qc_inspections')
+        .select('id, status, pass_qty')
+        .eq('production_order_id', production_order_id)) as any;
+
+      const hasPassedQc =
+        Array.isArray(qcs) &&
+        qcs.some((q) => q.status === 'passed' && Number(q.pass_qty || 0) > 0);
+      const overrideQcGate = Boolean(body.override_qc_gate);
+
+      if (!hasPassedQc && !overrideQcGate) {
+        return NextResponse.json(
+          {
+            error:
+              'QC Gate Warning: No passed AQL final garment inspection found for this batch in QC Lab. Please log QC inspection or check "Override QC Gate" to proceed with carton packing.',
+            requires_qc_override: true,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     const stageIndex = STAGES_SEQUENCE.indexOf(currentStage.stage as any);
     const outQty = Number(qty_out || 0);
     const scrapQty = Number(wastage || 0);
@@ -539,6 +564,24 @@ export async function PUT(request: NextRequest) {
           updated_at: new Date().toISOString(),
         })
         .eq('id', production_order_id);
+
+      // Revalidate storefront cache so finished stock is immediately accessible
+      try {
+        revalidatePath('/products');
+        revalidatePath('/');
+        if (batch?.product_id) {
+          const { data: prod } = (await supabase
+            .from('products')
+            .select('slug')
+            .eq('id', batch.product_id)
+            .single()) as any;
+          if (prod?.slug) {
+            revalidatePath(`/products/${prod.slug}`);
+          }
+        }
+      } catch (cacheErr) {
+        console.warn('[Production Completion Revalidation Warning]:', cacheErr);
+      }
     }
 
     return NextResponse.json({ success: true, message: 'Stage progress updated' });

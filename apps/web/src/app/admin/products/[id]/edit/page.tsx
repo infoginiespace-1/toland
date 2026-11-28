@@ -14,7 +14,7 @@ interface EditProductPageProps {
 export default async function EditProductPage({ params }: EditProductPageProps) {
   const supabase = createClient();
 
-  const [{ data: categories }, { data: productData }] = await Promise.all([
+  const [{ data: categories }, { data: productData }, { data: bomsData }] = await Promise.all([
     supabase
       .from('categories')
       .select('id, name, slug')
@@ -28,6 +28,10 @@ export default async function EditProductPage({ params }: EditProductPageProps) 
       `)
       .eq('id', params.id)
       .single(),
+    supabase
+      .from('boms')
+      .select('*, raw_material:raw_materials(*)')
+      .eq('product_id', params.id),
   ]);
 
   if (!productData) {
@@ -39,6 +43,7 @@ export default async function EditProductPage({ params }: EditProductPageProps) 
       <ProductForm
         initialData={productData}
         categories={(categories || []) as any[]}
+        bomsData={(bomsData || []) as any[]}
         isEdit={true}
       />
     </div>

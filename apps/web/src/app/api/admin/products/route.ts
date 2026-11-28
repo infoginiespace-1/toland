@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { verifyApiPermission } from '@/lib/admin-auth';
 
@@ -8,7 +9,10 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await verifyApiPermission('products');
     if (!auth.allowed) {
-      return NextResponse.json({ error: auth.status === 401 ? 'Unauthorized' : 'Forbidden: Missing permission' }, { status: auth.status });
+      return NextResponse.json(
+        { error: auth.status === 401 ? 'Unauthorized' : 'Forbidden: Missing permission' },
+        { status: auth.status }
+      );
     }
     const supabase = createClient();
 
@@ -58,7 +62,10 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await verifyApiPermission('products');
     if (!auth.allowed) {
-      return NextResponse.json({ error: auth.status === 401 ? 'Unauthorized' : 'Forbidden: Missing permission' }, { status: auth.status });
+      return NextResponse.json(
+        { error: auth.status === 401 ? 'Unauthorized' : 'Forbidden: Missing permission' },
+        { status: auth.status }
+      );
     }
     const supabase = createClient();
 
@@ -88,8 +95,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 1. Insert product
-    const { data: product, error: productError } = (await (supabase
-      .from('products') as any)
+    const { data: product, error: productError } = (await (supabase.from('products') as any)
       .insert({
         name,
         slug,
@@ -141,6 +147,17 @@ export async function POST(request: NextRequest) {
       await supabase.from('product_images').insert(imageRows as any);
     }
 
+    // Storefront cache revalidation
+    try {
+      revalidatePath('/products');
+      revalidatePath('/');
+      if (product.slug) {
+        revalidatePath(`/products/${product.slug}`);
+      }
+    } catch (e) {
+      console.warn('[Revalidate Warning]:', e);
+    }
+
     return NextResponse.json({ success: true, product });
   } catch (err: any) {
     console.error('[Admin Products POST Error]:', err);
@@ -152,13 +169,17 @@ export async function PUT(request: NextRequest) {
   try {
     const auth = await verifyApiPermission('products');
     if (!auth.allowed) {
-      return NextResponse.json({ error: auth.status === 401 ? 'Unauthorized' : 'Forbidden: Missing permission' }, { status: auth.status });
+      return NextResponse.json(
+        { error: auth.status === 401 ? 'Unauthorized' : 'Forbidden: Missing permission' },
+        { status: auth.status }
+      );
     }
     const supabase = createClient();
 
     const body = await request.json();
     const {
       id,
+      action,
       name,
       slug,
       description,
@@ -171,17 +192,46 @@ export async function PUT(request: NextRequest) {
       is_featured,
       meta_title,
       meta_description,
-      variants = [],
-      images = [],
+      variants,
+      images,
     } = body;
 
     if (!id) {
       return NextResponse.json({ error: 'Product ID is required for update' }, { status: 400 });
     }
 
+    // Quick toggle active / 1-click publish
+    if (action === 'toggle_active' || (is_active !== undefined && !name && !base_price)) {
+      const { data: toggled, error: toggleErr } = (await (supabase.from('products') as any)
+        .update({
+          is_active: Boolean(is_active),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id)
+        .select('*')
+        .single()) as any;
+
+      if (toggleErr) throw toggleErr;
+
+      try {
+        revalidatePath('/products');
+        revalidatePath('/');
+        if (toggled?.slug) {
+          revalidatePath(`/products/${toggled.slug}`);
+        }
+      } catch (e) {
+        console.warn('[Revalidate Warning]:', e);
+      }
+
+      return NextResponse.json({
+        success: true,
+        product: toggled,
+        message: toggled.is_active ? 'Product published to Storefront' : 'Product moved to Draft',
+      });
+    }
+
     // 1. Update product base record
-    const { data: updatedProduct, error: updateError } = (await (supabase
-      .from('products') as any)
+    const { data: updatedProduct, error: updateError } = (await (supabase.from('products') as any)
       .update({
         name,
         slug,
@@ -205,7 +255,7 @@ export async function PUT(request: NextRequest) {
       throw updateError;
     }
 
-    // 2. Refresh variants (delete old and re-insert or upsert)
+    // 2. Refresh variants
     if (variants && variants.length > 0) {
       await supabase.from('product_variants').delete().eq('product_id', id);
       const variantRows = variants.map((v: any, index: number) => ({
@@ -235,6 +285,17 @@ export async function PUT(request: NextRequest) {
       }
     }
 
+    // Storefront cache revalidation
+    try {
+      revalidatePath('/products');
+      revalidatePath('/');
+      if (updatedProduct?.slug) {
+        revalidatePath(`/products/${updatedProduct.slug}`);
+      }
+    } catch (e) {
+      console.warn('[Revalidate Warning]:', e);
+    }
+
     return NextResponse.json({ success: true, product: updatedProduct });
   } catch (err: any) {
     console.error('[Admin Products PUT Error]:', err);
@@ -246,7 +307,10 @@ export async function DELETE(request: NextRequest) {
   try {
     const auth = await verifyApiPermission('products');
     if (!auth.allowed) {
-      return NextResponse.json({ error: auth.status === 401 ? 'Unauthorized' : 'Forbidden: Missing permission' }, { status: auth.status });
+      return NextResponse.json(
+        { error: auth.status === 401 ? 'Unauthorized' : 'Forbidden: Missing permission' },
+        { status: auth.status }
+      );
     }
     const supabase = createClient();
 
@@ -257,10 +321,21 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Product ID is required' }, { status: 400 });
     }
 
-    // Soft delete by setting is_active = false or hard delete
+    const { data: prod } = (await supabase.from('products').select('slug').eq('id', id).single()) as any;
+
     const { error } = await supabase.from('products').delete().eq('id', id);
     if (error) {
       throw error;
+    }
+
+    try {
+      revalidatePath('/products');
+      revalidatePath('/');
+      if (prod?.slug) {
+        revalidatePath(`/products/${prod.slug}`);
+      }
+    } catch (e) {
+      console.warn('[Revalidate Warning]:', e);
     }
 
     return NextResponse.json({ success: true, message: 'Product deleted' });

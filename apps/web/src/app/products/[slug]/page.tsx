@@ -53,7 +53,8 @@ export async function generateMetadata({
 export default async function ProductDetailPage({ params }: ProductDetailPageProps) {
   const supabase = createClient();
 
-  const [productRes, reviewsRes] = await Promise.all([
+  const [{ data: authData }, productRes, reviewsRes] = await Promise.all([
+    supabase.auth.getUser(),
     supabase
       .from('products')
       .select(`
@@ -74,6 +75,14 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
   const product = productRes.data as any;
 
   if (!product) {
+    notFound();
+  }
+
+  // Draft Guard: If product is inactive, only allow authenticated admin/staff to preview
+  const userRole = authData?.user?.app_metadata?.role || authData?.user?.user_metadata?.role;
+  const isTeam = ['admin', 'staff', 'erp_manager', 'sales_crm', 'marketing'].includes(userRole);
+
+  if (!product.is_active && !isTeam) {
     notFound();
   }
 
@@ -130,6 +139,23 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+
+      {/* Admin Draft Preview Notice */}
+      {!product.is_active && (
+        <div className="p-4 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2 font-bold">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+            <span>Admin Preview Mode: This denim style is currently in DRAFT status and is hidden from public customers.</span>
+          </div>
+          <Link
+            href={`/admin/products/${product.id}/edit`}
+            className="px-3.5 py-1.5 rounded-xl bg-amber-700 text-white font-bold hover:bg-amber-800 transition-colors w-fit"
+          >
+            Edit & Publish
+          </Link>
+        </div>
+      )}
+
       {/* Breadcrumbs */}
       <nav className="flex items-center gap-2 text-xs font-semibold text-muted">
         <Link href="/" className="hover:text-text transition-colors">
