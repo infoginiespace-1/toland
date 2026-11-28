@@ -54,8 +54,8 @@ export async function POST(request: Request) {
     // Insert activity note
     await supabase.from('activities').insert({
       lead_id: (lead as any)?.id,
-      type: 'inquiry',
-      note: fullNotes,
+      activity_type: 'inquiry',
+      description: fullNotes,
     } as any);
 
     // Queue WhatsApp acknowledgement to buyer

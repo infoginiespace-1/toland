@@ -39,7 +39,7 @@ interface ProductionOrder {
   variant_id?: string | null;
   planned_qty: number;
   completed_qty: number;
-  status: 'draft' | 'in_progress' | 'completed' | 'cancelled';
+  status: 'planned' | 'in_progress' | 'completed' | 'cancelled';
   notes?: string | null;
   created_at: string;
   product?: { id: string; name: string; slug: string } | null;
@@ -632,6 +632,10 @@ export function ProductionManager({
                   placeholder="e.g. 14oz Selvedge Denim, double needle stitching, antique brass rivets..."
                   className="w-full px-3 py-2 text-sm rounded-lg border border-[#CFE0D5] focus:outline-none focus:ring-1 focus:ring-[#14532D]"
                 />
+              </div>
+
+              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-800 leading-relaxed">
+                <strong>ERP Auto-Sync Active:</strong> Initializing this batch deducts raw materials configured in BOM and records to Stock Ledger; completing Packing automatically adds finished garments to Variant Inventory.
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#CFE0D5]">

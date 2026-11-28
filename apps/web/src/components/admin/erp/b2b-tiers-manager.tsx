@@ -27,7 +27,7 @@ interface B2BTierItem {
     id: string;
     name: string;
     slug: string;
-    price: number;
+    base_price: number;
   } | null;
 }
 
@@ -35,7 +35,7 @@ interface ProductItem {
   id: string;
   name: string;
   slug: string;
-  price: number;
+  base_price: number;
 }
 
 interface B2BTiersManagerProps {
@@ -57,7 +57,7 @@ export function B2BTiersManager({ tiers, products }: B2BTiersManagerProps) {
 
   // Selected product reference for live discount calc in modal
   const selectedProduct = products.find((p) => p.id === productId);
-  const retailPrice = selectedProduct?.price || 0;
+  const retailPrice = selectedProduct?.base_price || 0;
   const wholesalePriceNum = parseFloat(price) || 0;
   const discountPct = retailPrice > 0 && wholesalePriceNum > 0
     ? Math.max(0, Math.round(((retailPrice - wholesalePriceNum) / retailPrice) * 100))
@@ -66,7 +66,7 @@ export function B2BTiersManager({ tiers, products }: B2BTiersManagerProps) {
   const openAddModal = () => {
     setProductId(products[0]?.id || '');
     setMinQty('50');
-    setPrice(products[0] ? String(Math.round(products[0].price * 0.75)) : '750');
+    setPrice(products[0] ? String(Math.round(products[0].base_price * 0.75)) : '750');
     setError(null);
     setModalOpen(true);
   };
@@ -141,7 +141,7 @@ export function B2BTiersManager({ tiers, products }: B2BTiersManagerProps) {
       tiersByProduct[t.product_id].tiers.push(t);
     } else if (t.product) {
       tiersByProduct[t.product_id] = {
-        product: { id: t.product.id, name: t.product.name, slug: t.product.slug, price: t.product.price },
+        product: { id: t.product.id, name: t.product.name, slug: t.product.slug, base_price: t.product.base_price },
         tiers: [t],
       };
     }
@@ -243,14 +243,14 @@ export function B2BTiersManager({ tiers, products }: B2BTiersManagerProps) {
                 <div>
                   <h3 className="text-sm font-bold text-gray-900">{product.name}</h3>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    Retail Base Price: <span className="font-semibold text-[#14532D]">₹{product.price}</span>
+                    Retail Base Price: <span className="font-semibold text-[#14532D]">₹{product.base_price}</span>
                   </p>
                 </div>
                 <button
                   onClick={() => {
                     setProductId(product.id);
                     setMinQty('50');
-                    setPrice(String(Math.round(product.price * 0.75)));
+                    setPrice(String(Math.round(product.base_price * 0.75)));
                     setError(null);
                     setModalOpen(true);
                   }}
@@ -268,8 +268,8 @@ export function B2BTiersManager({ tiers, products }: B2BTiersManagerProps) {
               ) : (
                 <div className="p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                   {sortedTiers.map((tier) => {
-                    const discount = product.price > 0
-                      ? Math.round(((product.price - Number(tier.price)) / product.price) * 100)
+                    const discount = product.base_price > 0
+                      ? Math.round(((product.base_price - Number(tier.price)) / product.base_price) * 100)
                       : 0;
 
                     return (
@@ -360,7 +360,7 @@ export function B2BTiersManager({ tiers, products }: B2BTiersManagerProps) {
                     setProductId(e.target.value);
                     const sel = products.find((p) => p.id === e.target.value);
                     if (sel) {
-                      setPrice(String(Math.round(sel.price * 0.75)));
+                      setPrice(String(Math.round(sel.base_price * 0.75)));
                     }
                   }}
                   className="w-full px-3 py-2 text-sm rounded-lg border border-[#CFE0D5] focus:outline-none focus:ring-1 focus:ring-[#14532D]"
@@ -369,7 +369,7 @@ export function B2BTiersManager({ tiers, products }: B2BTiersManagerProps) {
                   <option value="">Select product...</option>
                   {products.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.name} (Retail: ₹{p.price})
+                      {p.name} (Retail: ₹{p.base_price})
                     </option>
                   ))}
                 </select>

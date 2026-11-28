@@ -14,6 +14,7 @@ import {
   Truck,
   PackageCheck,
   Building,
+  Printer,
 } from 'lucide-react';
 
 interface POItem {
@@ -49,20 +50,27 @@ interface PurchaseOrdersManagerProps {
   purchaseOrders: POItem[];
   suppliers: SupplierOption[];
   rawMaterials: RawMaterialOption[];
+  initialMaterialId?: string;
 }
 
 export function PurchaseOrdersManager({
   purchaseOrders,
   suppliers,
   rawMaterials,
+  initialMaterialId,
 }: PurchaseOrdersManagerProps) {
+  const preselectedMat = initialMaterialId
+    ? rawMaterials.find((m) => m.id === initialMaterialId)
+    : undefined;
+
   const router = useRouter();
-  const [modalOpen, setModalOpen] = useState(false);
+  const [modalOpen, setModalOpen] = useState(Boolean(preselectedMat));
   const [loading, setLoading] = useState(false);
   const [receivingId, setReceivingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [printPo, setPrintPo] = useState<POItem | null>(null);
 
   // Form State
   const [supplierId, setSupplierId] = useState(suppliers[0]?.id || '');
@@ -70,9 +78,9 @@ export function PurchaseOrdersManager({
     Array<{ raw_material_id: string; qty: number; unit_price: number }>
   >([
     {
-      raw_material_id: rawMaterials[0]?.id || '',
+      raw_material_id: preselectedMat?.id || rawMaterials[0]?.id || '',
       qty: 500,
-      unit_price: rawMaterials[0]?.unit_price || 200,
+      unit_price: preselectedMat?.unit_price || rawMaterials[0]?.unit_price || 200,
     },
   ]);
 
@@ -333,21 +341,33 @@ export function PurchaseOrdersManager({
                       </td>
 
                       <td className="py-3.5 px-4 text-right">
-                        {isOrdered && (
+                        <div className="flex items-center justify-end gap-2">
                           <button
                             type="button"
-                            onClick={() => handleMarkReceived(po)}
-                            disabled={receivingId === po.id}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-success text-white text-3xs font-bold hover:bg-success/90 shadow-2xs transition-colors disabled:opacity-50"
+                            onClick={() => setPrintPo(po)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-[#CFE0D5] bg-white text-text text-3xs font-bold hover:border-primary hover:text-primary transition-colors cursor-pointer"
+                            title="Print or Save Purchase Order PDF"
                           >
-                            {receivingId === po.id ? (
-                              <Loader2 className="w-3 h-3 animate-spin" />
-                            ) : (
-                              <PackageCheck className="w-3.5 h-3.5" />
-                            )}
-                            <span>Receive Goods</span>
+                            <Printer className="w-3.5 h-3.5" />
+                            <span>Print PO</span>
                           </button>
-                        )}
+
+                          {isOrdered && (
+                            <button
+                              type="button"
+                              onClick={() => handleMarkReceived(po)}
+                              disabled={receivingId === po.id}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-success text-white text-3xs font-bold hover:bg-success/90 shadow-2xs transition-colors disabled:opacity-50 cursor-pointer"
+                            >
+                              {receivingId === po.id ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <PackageCheck className="w-3.5 h-3.5" />
+                              )}
+                              <span>Receive Goods</span>
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -517,6 +537,108 @@ export function PurchaseOrdersManager({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Printable Supplier Purchase Order Modal */}
+      {printPo && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 overflow-y-auto print:bg-white print:p-0">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-8 shadow-2xl border border-[#CFE0D5] space-y-6 relative print:shadow-none print:border-none print:max-w-full">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-200 print:hidden">
+              <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Official Supplier Purchase Order</span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-4 py-2 rounded-xl bg-[#14532D] text-white text-xs font-bold flex items-center gap-1.5 hover:bg-[#14532D]/90 cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Print / Save PDF</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPrintPo(null)}
+                  className="p-2 rounded-xl text-slate-400 hover:text-slate-700 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Mill Letterhead */}
+            <div className="flex flex-col sm:flex-row justify-between gap-4 border-b-2 border-slate-900 pb-4">
+              <div>
+                <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">TOLAND PRIVATE LIMITED</h2>
+                <p className="text-xs text-slate-600 mt-0.5">Sheikhpura, Barbigha, Khetalpura 811101, Bihar, India</p>
+                <p className="text-xs font-mono text-slate-700 mt-0.5">Phone: +91 87971 86001 · Procurement Desk</p>
+              </div>
+              <div className="sm:text-right">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">PURCHASE ORDER</span>
+                <div className="text-lg font-mono font-extrabold text-[#14532D]">{printPo.po_no}</div>
+                <div className="text-xs text-slate-500">
+                  Date: {new Date(printPo.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </div>
+              </div>
+            </div>
+
+            {/* Supplier Info */}
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Vendor / Supplier Mill</div>
+              <div className="text-sm font-bold text-slate-900">{printPo.supplier?.name || 'Supplier'}</div>
+              {printPo.supplier?.gst_number && (
+                <div className="font-mono text-slate-700">GSTIN: {printPo.supplier.gst_number}</div>
+              )}
+              {printPo.supplier?.phone && (
+                <div className="text-slate-600">Contact: {printPo.supplier.phone}</div>
+              )}
+            </div>
+
+            {/* Items Table */}
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b-2 border-slate-900 text-slate-600 uppercase text-[10px] font-bold">
+                  <th className="py-2">Raw Material Description</th>
+                  <th className="py-2 text-right">Qty</th>
+                  <th className="py-2 text-right">Unit Rate</th>
+                  <th className="py-2 text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {(printPo.items || []).map((it, idx) => (
+                  <tr key={idx}>
+                    <td className="py-2.5 font-semibold text-slate-900">
+                      {it.raw_material?.name || 'Raw Material'}
+                      <span className="block text-[10px] text-slate-500 capitalize">{it.raw_material?.type}</span>
+                    </td>
+                    <td className="py-2.5 text-right font-mono">
+                      {Number(it.qty).toLocaleString('en-IN')} {it.raw_material?.unit}
+                    </td>
+                    <td className="py-2.5 text-right font-mono">₹{Number(it.unit_price).toFixed(2)}</td>
+                    <td className="py-2.5 text-right font-mono font-bold">₹{Number(it.total).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-slate-900">
+                  <td colSpan={3} className="py-3 text-right font-extrabold text-slate-900 uppercase">Total PO Value (INR):</td>
+                  <td className="py-3 text-right font-mono font-extrabold text-base text-[#14532D]">
+                    ₹{Number(printPo.total_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+
+            <div className="pt-6 border-t border-slate-200 flex items-end justify-between text-[11px] text-slate-500">
+              <div>
+                <p className="font-semibold text-slate-700">Delivery Location:</p>
+                <p>TOLAND Manufacturing Floor, Barbigha, Sheikhpura, Bihar 811101</p>
+              </div>
+              <div className="text-right">
+                <div className="h-8" />
+                <div className="border-t border-slate-400 pt-1 font-bold text-slate-800">Authorized Signatory</div>
+              </div>
+            </div>
           </div>
         </div>
       )}

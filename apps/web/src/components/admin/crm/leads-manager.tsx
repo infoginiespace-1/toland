@@ -22,7 +22,9 @@ import {
   Loader2,
   X,
   Send,
+  Download,
 } from 'lucide-react';
+import { downloadCsv } from '@/lib/csv-export';
 
 interface LeadItem {
   id: string;
@@ -289,6 +291,29 @@ export function LeadsManager({ leads }: LeadsManagerProps) {
               <TableIcon className="w-4 h-4" />
             </button>
           </div>
+
+          <button
+            type="button"
+            onClick={() =>
+              downloadCsv(
+                `toland-b2b-leads-${new Date().toISOString().slice(0, 10)}.csv`,
+                ['Name', 'Phone', 'Source', 'Stage', 'Deal Value', 'Next Follow-up', 'Created Date'],
+                filteredLeads.map((l) => [
+                  l.name,
+                  l.phone,
+                  l.source,
+                  l.stage,
+                  l.value,
+                  l.next_followup_at ? new Date(l.next_followup_at).toLocaleDateString('en-IN') : '',
+                  new Date(l.created_at).toLocaleDateString('en-IN'),
+                ])
+              )
+            }
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-white border border-[#CFE0D5] text-gray-700 rounded-lg hover:border-[#14532D] hover:text-[#14532D] text-xs font-semibold transition cursor-pointer"
+          >
+            <Download className="w-4 h-4" />
+            <span>CSV</span>
+          </button>
 
           <button
             onClick={handleOpenAddModal}

@@ -93,7 +93,47 @@ export async function POST(request: NextRequest) {
 
     await (supabase.from('production_stages') as any).insert(stageRows);
 
-    return NextResponse.json({ success: true, productionOrder: order });
+    // 4. Auto-deduct Raw Materials based on Bill of Materials (BOM)
+    const { data: bomRows } = (await supabase
+      .from('boms')
+      .select('raw_material_id, qty_per_piece')
+      .eq('product_id', product_id)) as any;
+
+    let bomDeductedCount = 0;
+    if (bomRows && bomRows.length > 0) {
+      for (const bom of bomRows) {
+        const consumeQty = Number(bom.qty_per_piece || 0) * Number(planned_qty);
+        if (consumeQty <= 0) continue;
+
+        const { data: rm } = (await supabase
+          .from('raw_materials')
+          .select('stock_qty')
+          .eq('id', bom.raw_material_id)
+          .single()) as any;
+
+        if (rm) {
+          const nextStock = Math.max(0, Number(rm.stock_qty || 0) - consumeQty);
+          await (supabase.from('raw_materials') as any)
+            .update({ stock_qty: nextStock, updated_at: new Date().toISOString() })
+            .eq('id', bom.raw_material_id);
+
+          await (supabase.from('stock_ledger') as any).insert({
+            item_type: 'raw_material',
+            item_id: bom.raw_material_id,
+            change: -consumeQty,
+            reason: 'production_out',
+            ref_id: order.id,
+          });
+          bomDeductedCount += 1;
+        }
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      productionOrder: order,
+      bomDeductedCount,
+    });
   } catch (err: any) {
     console.error('[Admin Production POST Error]:', err);
     return NextResponse.json({ error: err?.message || 'Server error' }, { status: 500 });
@@ -160,14 +200,47 @@ export async function PUT(request: NextRequest) {
         .eq('production_order_id', production_order_id)
         .eq('stage', nextStageName);
     } else if (stage.stage === 'packing') {
+      // Check current production order status before incrementing finished stock (idempotent guard)
+      const { data: prodOrder } = (await supabase
+        .from('production_orders')
+        .select('id, status, variant_id, order_no')
+        .eq('id', production_order_id)
+        .single()) as any;
+
+      const wasCompleted = prodOrder?.status === 'completed';
+
       // Completed final stage: update production order completed_qty and mark completed
       await (supabase.from('production_orders') as any)
         .update({
           completed_qty: outNum,
-          status: 'completed',
+          status: mark_stage_complete ? 'completed' : 'in_progress',
           updated_at: new Date().toISOString(),
         })
         .eq('id', production_order_id);
+
+      // Auto-add finished units to variant stock & stock_ledger when first completed
+      if (mark_stage_complete && !wasCompleted && prodOrder?.variant_id && outNum > 0) {
+        const { data: variant } = (await supabase
+          .from('product_variants')
+          .select('stock_qty')
+          .eq('id', prodOrder.variant_id)
+          .single()) as any;
+
+        if (variant) {
+          const nextVariantQty = Number(variant.stock_qty || 0) + outNum;
+          await (supabase.from('product_variants') as any)
+            .update({ stock_qty: nextVariantQty, updated_at: new Date().toISOString() })
+            .eq('id', prodOrder.variant_id);
+
+          await (supabase.from('stock_ledger') as any).insert({
+            item_type: 'finished_variant',
+            item_id: prodOrder.variant_id,
+            change: outNum,
+            reason: 'production_in',
+            ref_id: production_order_id,
+          });
+        }
+      }
     }
 
     return NextResponse.json({ success: true, message: 'Stage updated successfully' });

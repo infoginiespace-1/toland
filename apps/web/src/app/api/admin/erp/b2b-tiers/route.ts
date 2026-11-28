@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
       .from('b2b_price_tiers')
       .select(`
         *,
-        product:products (id, name, slug, price)
+        product:products (id, name, slug, base_price)
       `)
       .order('min_qty', { ascending: true });
 

@@ -30,6 +30,7 @@ import {
   Bot,
   Sliders,
   Star,
+  RotateCcw,
 } from 'lucide-react';
 
 interface AdminSidebarProps {
@@ -52,11 +53,13 @@ export function AdminSidebar({ userPhone = 'Admin', userRole = 'admin' }: AdminS
         { label: 'Customer Reviews', href: '/admin/reviews', icon: Star },
         { label: 'Coupons', href: '/admin/coupons', icon: Tag },
         { label: 'Orders & Shipments', href: '/admin/orders', icon: ShoppingBag },
+        { label: 'Returns & Exchanges', href: '/admin/returns', icon: RotateCcw },
       ],
     },
     {
       group: 'ERP & Manufacturing',
       links: [
+        { label: 'ERP Overview', href: '/admin/erp', icon: LayoutDashboard },
         { label: 'Raw Materials', href: '/admin/erp/raw-materials', icon: Boxes },
         { label: 'Suppliers', href: '/admin/erp/suppliers', icon: Factory },
         { label: 'Bill of Materials', href: '/admin/erp/boms', icon: FileSpreadsheet },

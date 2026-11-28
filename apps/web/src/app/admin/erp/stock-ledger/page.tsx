@@ -27,7 +27,7 @@ export default async function AdminStockLedgerPage() {
           fit,
           wash,
           sku,
-          stock_quantity,
+          stock_qty,
           product:products (name)
         `)
         .order('created_at', { ascending: true }),

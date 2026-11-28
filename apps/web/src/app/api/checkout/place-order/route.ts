@@ -133,6 +133,30 @@ export async function POST(request: Request) {
 
     await supabase.from('order_items').insert(orderItemsRows as any);
 
+    // 4b. Auto-deduct Variant Stock & Record Stock Ledger Sale Entries
+    for (const item of items) {
+      const { data: variant } = (await supabase
+        .from('product_variants')
+        .select('stock_qty')
+        .eq('id', item.variantId)
+        .single()) as any;
+
+      if (variant) {
+        const nextStock = Math.max(0, Number(variant.stock_qty || 0) - item.qty);
+        await (supabase.from('product_variants') as any)
+          .update({ stock_qty: nextStock, updated_at: new Date().toISOString() })
+          .eq('id', item.variantId);
+      }
+
+      await (supabase.from('stock_ledger') as any).insert({
+        item_type: 'finished_variant',
+        item_id: item.variantId,
+        change: -item.qty,
+        reason: 'sale',
+        ref_id: createdOrderId,
+      });
+    }
+
     // 5. Insert Status History
     await supabase.from('order_status_history').insert({
       order_id: createdOrderId,

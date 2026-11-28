@@ -15,7 +15,9 @@ import {
   ChevronRight,
   Phone,
   MapPin,
+  Download,
 } from 'lucide-react';
+import { downloadCsv } from '@/lib/csv-export';
 
 interface OrdersTableClientProps {
   orders: any[];
@@ -108,8 +110,8 @@ export function OrdersTableClient({ orders }: OrdersTableClientProps) {
           />
         </div>
 
-        {/* Status Filter Chips */}
-        <div className="flex items-center gap-1.5 overflow-x-auto text-xs">
+        {/* Status Filter Chips & CSV Export */}
+        <div className="flex items-center gap-2 overflow-x-auto text-xs">
           {[
             { key: 'all', label: 'All Orders' },
             { key: 'placed', label: 'Placed' },
@@ -124,7 +126,7 @@ export function OrdersTableClient({ orders }: OrdersTableClientProps) {
                 key={tab.key}
                 type="button"
                 onClick={() => setStatusFilter(tab.key)}
-                className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-colors ${
+                className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-colors cursor-pointer ${
                   active
                     ? 'bg-primary text-white shadow-2xs'
                     : 'bg-[#F0F7F2] text-muted hover:text-text'
@@ -134,6 +136,39 @@ export function OrdersTableClient({ orders }: OrdersTableClientProps) {
               </button>
             );
           })}
+
+          <button
+            type="button"
+            onClick={() =>
+              downloadCsv(
+                `toland-orders-${new Date().toISOString().slice(0, 10)}.csv`,
+                ['Order No', 'Date', 'Customer', 'Phone', 'City', 'State', 'Payment Method', 'Payment Status', 'Order Status', 'Subtotal', 'Discount', 'Tax (GST)', 'Total'],
+                filtered.map((o) => {
+                  const a = o.address_snapshot || {};
+                  return [
+                    o.order_no,
+                    new Date(o.created_at).toLocaleDateString('en-IN'),
+                    a.name || '',
+                    a.phone || '',
+                    a.city || '',
+                    a.state || '',
+                    o.payment_method,
+                    o.payment_status,
+                    o.status,
+                    o.subtotal,
+                    o.discount,
+                    o.tax,
+                    o.total,
+                  ];
+                })
+              )
+            }
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#CFE0D5] bg-white text-text font-bold whitespace-nowrap hover:border-primary hover:text-primary transition-colors cursor-pointer ml-1"
+            title="Export filtered orders for GST / Accounting"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Export CSV</span>
+          </button>
         </div>
       </div>
 

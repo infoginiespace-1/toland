@@ -12,12 +12,12 @@ export default async function AdminB2BTiersPage() {
       .from('b2b_price_tiers')
       .select(`
         *,
-        product:products (id, name, slug, price)
+        product:products (id, name, slug, base_price)
       `)
       .order('min_qty', { ascending: true }),
     supabase
       .from('products')
-      .select('id, name, slug, price')
+      .select('id, name, slug, base_price')
       .order('name', { ascending: true }),
   ]);
 

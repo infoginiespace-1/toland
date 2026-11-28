@@ -4,7 +4,11 @@ import { PurchaseOrdersManager } from '@/components/admin/erp/purchase-orders-ma
 
 export const dynamic = 'force-dynamic';
 
-export default async function AdminPurchaseOrdersPage() {
+export default async function AdminPurchaseOrdersPage({
+  searchParams,
+}: {
+  searchParams?: { material?: string };
+}) {
   const supabase = createClient();
 
   const [{ data: purchaseOrders }, { data: suppliers }, { data: rawMaterials }] =
@@ -36,6 +40,7 @@ export default async function AdminPurchaseOrdersPage() {
         purchaseOrders={(purchaseOrders || []) as any[]}
         suppliers={(suppliers || []) as any[]}
         rawMaterials={(rawMaterials || []) as any[]}
+        initialMaterialId={searchParams?.material}
       />
     </div>
   );

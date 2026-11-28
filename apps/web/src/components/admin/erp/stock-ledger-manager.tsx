@@ -16,7 +16,9 @@ import {
   Loader2,
   X,
   CheckCircle2,
+  Download,
 } from 'lucide-react';
+import { downloadCsv } from '@/lib/csv-export';
 
 interface LedgerItem {
   id: string;
@@ -42,7 +44,7 @@ interface VariantItem {
   fit?: string | null;
   wash?: string | null;
   sku?: string | null;
-  stock_quantity: number;
+  stock_qty: number;
   product?: { name: string } | null;
 }
 
@@ -164,13 +166,37 @@ export function StockLedgerManager({
             Immutable movement history for raw fabric, trims, packaging, and finished denim jeans.
           </p>
         </div>
-        <button
-          onClick={openAdjustmentModal}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-[#14532D] text-white rounded-lg hover:bg-[#14532D]/90 text-sm font-medium transition shadow-sm w-fit"
-        >
-          <Plus className="w-4 h-4" />
-          Record Stock Adjustment
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() =>
+              downloadCsv(
+                `toland-stock-ledger-${new Date().toISOString().slice(0, 10)}.csv`,
+                ['Date', 'Category', 'Item', 'Change Qty', 'Reason', 'Ref ID'],
+                filteredLedger.map((entry) => [
+                  new Date(entry.created_at).toLocaleString('en-IN'),
+                  entry.item_type,
+                  getItemLabel(entry.item_type, entry.item_id),
+                  entry.change,
+                  entry.reason,
+                  entry.ref_id || '',
+                ])
+              )
+            }
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white border border-[#CFE0D5] text-slate-700 rounded-lg hover:border-[#14532D] hover:text-[#14532D] text-sm font-medium transition cursor-pointer"
+          >
+            <Download className="w-4 h-4" />
+            <span>Export CSV</span>
+          </button>
+
+          <button
+            onClick={openAdjustmentModal}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-[#14532D] text-white rounded-lg hover:bg-[#14532D]/90 text-sm font-medium transition shadow-sm w-fit cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            Record Stock Adjustment
+          </button>
+        </div>
       </div>
 
       {/* KPI Cards */}
@@ -436,7 +462,7 @@ export function StockLedgerManager({
                       ))
                     : variants.map((v) => (
                         <option key={v.id} value={v.id}>
-                          {v.product?.name || 'Garment'} - Size {v.size} {v.fit ? `(${v.fit})` : ''} (Current: {v.stock_quantity} pcs)
+                          {v.product?.name || 'Garment'} - Size {v.size} {v.fit ? `(${v.fit})` : ''} (Current: {v.stock_qty} pcs)
                         </option>
                       ))}
                 </select>

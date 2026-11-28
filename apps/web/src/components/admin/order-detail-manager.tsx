@@ -115,11 +115,19 @@ export function OrderDetailManager({ order }: OrderDetailManagerProps) {
           <button
             type="button"
             onClick={() => setInvoiceOpen(true)}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-[#CFE0D5] text-text text-xs font-bold hover:border-primary hover:text-primary transition-colors"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-[#CFE0D5] text-text text-xs font-bold hover:border-primary hover:text-primary transition-colors cursor-pointer"
           >
             <Printer className="w-4 h-4" />
-            <span>GST Tax Invoice</span>
+            <span>Quick Invoice</span>
           </button>
+          <Link
+            href={`/orders/${order.order_no}/invoice`}
+            target="_blank"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-[#CFE0D5] text-primary text-xs font-bold hover:border-primary transition-colors"
+          >
+            <FileText className="w-4 h-4" />
+            <span>Official PDF &amp; Slip</span>
+          </Link>
           <Link
             href={`/orders/${order.order_no}`}
             target="_blank"
@@ -280,11 +288,11 @@ export function OrderDetailManager({ order }: OrderDetailManagerProps) {
                   )}
                 </div>
 
-                <div className="pt-2 border-t border-[#CFE0D5]">
+                <div className="pt-2 border-t border-[#CFE0D5] space-y-2">
                   <span className="text-3xs font-mono font-bold uppercase tracking-wider text-muted block">
                     Payment Gateway Details
                   </span>
-                  <div className="flex items-center gap-2 mt-1">
+                  <div className="flex flex-wrap items-center gap-2 mt-1">
                     <span className="px-2 py-0.5 rounded font-mono font-bold uppercase text-3xs bg-[#E3EFE7] text-primary">
                       {order.payment_method?.toUpperCase()}
                     </span>
@@ -292,6 +300,54 @@ export function OrderDetailManager({ order }: OrderDetailManagerProps) {
                       Status: {order.payment_status}
                     </span>
                   </div>
+
+                  {order.payment_method === 'upi' && (() => {
+                    const utrMatch = history
+                      .map((h: any) => h.note || '')
+                      .join(' ')
+                      .match(/UTR:\s*([A-Za-z0-9]+)/i);
+                    const utr = utrMatch ? utrMatch[1] : null;
+                    return (
+                      <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 space-y-2">
+                        <div className="text-[11px] font-mono font-bold text-amber-900">
+                          UPI Ref / UTR: {utr || 'Check Order Notes'}
+                        </div>
+                        {order.payment_status === 'pending' && (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              setUpdating(true);
+                              setFeedback(null);
+                              try {
+                                const res = await fetch(`/api/admin/orders/${order.id}/status`, {
+                                  method: 'PUT',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({
+                                    status: order.status,
+                                    payment_status: 'paid',
+                                    note: `UPI payment verified (UTR: ${utr || 'Confirmed'})`,
+                                    notify_whatsapp: false,
+                                  }),
+                                });
+                                if (!res.ok) throw new Error('Failed to verify payment');
+                                setPaymentStatus('paid');
+                                setFeedback({ type: 'success', msg: 'UPI payment marked as PAID & Verified.' });
+                                router.refresh();
+                              } catch (err: any) {
+                                setFeedback({ type: 'error', msg: err?.message || 'Verification failed' });
+                              } finally {
+                                setUpdating(false);
+                              }
+                            }}
+                            disabled={updating}
+                            className="px-3 py-1 rounded-lg bg-emerald-600 text-white text-[11px] font-bold hover:bg-emerald-700 transition cursor-pointer disabled:opacity-50"
+                          >
+                            Verify UPI &amp; Mark Paid
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             </div>

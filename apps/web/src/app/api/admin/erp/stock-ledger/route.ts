@@ -67,10 +67,10 @@ export async function POST(request: NextRequest) {
       const newQty = Math.max(0, currentQty + changeVal);
       await (supabase.from('raw_materials') as any).update({ stock_qty: newQty, updated_at: new Date().toISOString() }).eq('id', item_id);
     } else if (item_type === 'finished_variant') {
-      const { data: variant } = (await supabase.from('product_variants').select('stock_quantity').eq('id', item_id).single()) as any;
-      const currentQty = Number(variant?.stock_quantity || 0);
+      const { data: variant } = (await supabase.from('product_variants').select('stock_qty').eq('id', item_id).single()) as any;
+      const currentQty = Number(variant?.stock_qty || 0);
       const newQty = Math.max(0, currentQty + changeVal);
-      await (supabase.from('product_variants') as any).update({ stock_quantity: newQty }).eq('id', item_id);
+      await (supabase.from('product_variants') as any).update({ stock_qty: newQty, updated_at: new Date().toISOString() }).eq('id', item_id);
     }
 
     return NextResponse.json({ success: true, message: 'Stock adjusted and ledger recorded successfully' });
