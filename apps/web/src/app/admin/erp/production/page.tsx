@@ -4,10 +4,14 @@ import { ProductionManager } from '@/components/admin/erp/production-manager';
 
 export const dynamic = 'force-dynamic';
 
-export default async function AdminProductionPage() {
+export default async function AdminProductionPage({
+  searchParams,
+}: {
+  searchParams?: { product?: string; variant?: string };
+}) {
   const supabase = createClient();
 
-  const [{ data: productionOrders }, { data: products }, { data: variants }] =
+  const [{ data: productionOrders }, { data: products }, { data: variants }, { data: boms }] =
     await Promise.all([
       supabase
         .from('production_orders')
@@ -24,8 +28,11 @@ export default async function AdminProductionPage() {
         .order('name', { ascending: true }),
       supabase
         .from('product_variants')
-        .select('id, product_id, size, fit, wash, sku')
+        .select('id, product_id, size, fit, wash, sku, stock_qty')
         .order('size', { ascending: true }),
+      supabase
+        .from('boms')
+        .select('id, product_id, raw_material_id, qty_per_piece, scrap_percent, raw_material:raw_materials(id, name, unit, stock_qty)'),
     ]);
 
   return (
@@ -34,6 +41,9 @@ export default async function AdminProductionPage() {
         productionOrders={(productionOrders || []) as any[]}
         products={(products || []) as any[]}
         variants={(variants || []) as any[]}
+        boms={(boms || []) as any[]}
+        initialProductId={searchParams?.product}
+        initialVariantId={searchParams?.variant}
       />
     </div>
   );

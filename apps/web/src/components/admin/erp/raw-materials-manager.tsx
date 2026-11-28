@@ -2,23 +2,21 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
   Boxes,
   Plus,
-  Edit,
-  Trash2,
   Search,
   AlertTriangle,
-  CheckCircle2,
-  Loader2,
-  X,
+  Edit,
+  Trash2,
   SlidersHorizontal,
-  ArrowUpDown,
   History,
+  X,
+  Loader2,
 } from 'lucide-react';
-import Link from 'next/link';
 
-interface MaterialItem {
+interface RawMaterial {
   id: string;
   name: string;
   type: string;
@@ -26,62 +24,70 @@ interface MaterialItem {
   stock_qty: number;
   reorder_level: number;
   unit_price: number;
-  created_at: string;
+  batch_lot_no?: string | null;
+  gsm?: number | null;
+  shade?: string | null;
+  updated_at?: string;
 }
 
-interface RawMaterialsManagerProps {
-  materials: MaterialItem[];
-}
-
-export function RawMaterialsManager({ materials }: RawMaterialsManagerProps) {
+export function RawMaterialsManager({ materials }: { materials: RawMaterial[] }) {
   const router = useRouter();
   const [search, setSearch] = useState('');
   const [selectedType, setSelectedType] = useState('all');
+
   const [modalOpen, setModalOpen] = useState(false);
   const [adjustModalOpen, setAdjustModalOpen] = useState(false);
-  const [editingMaterial, setEditingMaterial] = useState<MaterialItem | null>(null);
-  const [adjustingMaterial, setAdjustingMaterial] = useState<MaterialItem | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [editingMaterial, setEditingMaterial] = useState<RawMaterial | null>(null);
+  const [adjustingMaterial, setAdjustingMaterial] = useState<RawMaterial | null>(null);
 
-  // Form State
   const [name, setName] = useState('');
   const [type, setType] = useState('fabric');
   const [unit, setUnit] = useState('meters');
   const [stockQty, setStockQty] = useState('0');
   const [reorderLevel, setReorderLevel] = useState('10');
   const [unitPrice, setUnitPrice] = useState('0');
+  const [batchLotNo, setBatchLotNo] = useState('');
+  const [gsm, setGsm] = useState('');
+  const [shade, setShade] = useState('');
 
-  // Adjustment State
   const [adjustChange, setAdjustChange] = useState('');
-  const [adjustReason, setAdjustReason] = useState('inventory_audit');
+  const [adjustReason, setAdjustReason] = useState('physical_count_audit');
+
+  const [loading, setLoading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const openCreateModal = () => {
     setEditingMaterial(null);
     setName('');
     setType('fabric');
     setUnit('meters');
-    setStockQty('100');
-    setReorderLevel('20');
-    setUnitPrice('200');
+    setStockQty('0');
+    setReorderLevel('10');
+    setUnitPrice('0');
+    setBatchLotNo('');
+    setGsm('');
+    setShade('');
     setError(null);
     setModalOpen(true);
   };
 
-  const openEditModal = (m: MaterialItem) => {
+  const openEditModal = (m: RawMaterial) => {
     setEditingMaterial(m);
     setName(m.name);
     setType(m.type);
     setUnit(m.unit);
-    setStockQty(m.stock_qty.toString());
-    setReorderLevel(m.reorder_level.toString());
-    setUnitPrice(m.unit_price.toString());
+    setStockQty(String(m.stock_qty));
+    setReorderLevel(String(m.reorder_level));
+    setUnitPrice(String(m.unit_price));
+    setBatchLotNo(m.batch_lot_no || '');
+    setGsm(m.gsm != null ? String(m.gsm) : '');
+    setShade(m.shade || '');
     setError(null);
     setModalOpen(true);
   };
 
-  const openAdjustModal = (m: MaterialItem) => {
+  const openAdjustModal = (m: RawMaterial) => {
     setAdjustingMaterial(m);
     setAdjustChange('');
     setAdjustReason('physical_count_audit');
@@ -91,23 +97,21 @@ export function RawMaterialsManager({ materials }: RawMaterialsManagerProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) {
-      setError('Material name is required');
-      return;
-    }
+    setLoading(true);
+    setError(null);
 
     try {
-      setLoading(true);
-      setError(null);
-
       const payload = {
-        id: editingMaterial?.id,
+        ...(editingMaterial ? { id: editingMaterial.id } : {}),
         name,
         type,
         unit,
-        stock_qty: Number(stockQty),
-        reorder_level: Number(reorderLevel),
-        unit_price: Number(unitPrice),
+        stock_qty: Number(stockQty || 0),
+        reorder_level: Number(reorderLevel || 0),
+        unit_price: Number(unitPrice || 0),
+        batch_lot_no: batchLotNo.trim() || null,
+        gsm: gsm.trim() ? Number(gsm) : null,
+        shade: shade.trim() || null,
       };
 
       const res = await fetch('/api/admin/erp/raw-materials', {
@@ -122,7 +126,7 @@ export function RawMaterialsManager({ materials }: RawMaterialsManagerProps) {
       setModalOpen(false);
       router.refresh();
     } catch (err: any) {
-      setError(err?.message || 'Server error');
+      setError(err?.message || 'Failed to save raw material');
     } finally {
       setLoading(false);
     }
@@ -130,52 +134,47 @@ export function RawMaterialsManager({ materials }: RawMaterialsManagerProps) {
 
   const handleAdjustSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!adjustChange || isNaN(Number(adjustChange))) {
-      setError('Please enter a valid numeric stock change amount (e.g. +50 or -10)');
-      return;
-    }
+    if (!adjustingMaterial) return;
+    setLoading(true);
+    setError(null);
 
     try {
-      setLoading(true);
-      setError(null);
-
-      const payload = {
-        id: adjustingMaterial?.id,
-        adjust_change: Number(adjustChange),
-        adjust_reason: adjustReason,
-      };
-
       const res = await fetch('/api/admin/erp/raw-materials', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          id: adjustingMaterial.id,
+          adjust_change: Number(adjustChange),
+          adjust_reason: adjustReason,
+        }),
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to adjust stock');
+      if (!res.ok) throw new Error(data.error || 'Adjustment failed');
 
       setAdjustModalOpen(false);
       router.refresh();
     } catch (err: any) {
-      setError(err?.message || 'Server error');
+      setError(err?.message || 'Failed to adjust stock');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async (m: MaterialItem) => {
-    if (!confirm(`Delete material "${m.name}"?`)) return;
-
+  const handleDelete = async (m: RawMaterial) => {
+    if (!confirm(`Delete raw material "${m.name}"? Any linked BOM lines may also be affected.`)) {
+      return;
+    }
+    setDeletingId(m.id);
     try {
-      setDeletingId(m.id);
-      const res = await fetch(`/api/admin/erp/raw-materials?id=${m.id}`, {
+      const res = await fetch(`/api/admin/erp/raw-materials?id=${encodeURIComponent(m.id)}`, {
         method: 'DELETE',
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to delete');
+      if (!res.ok) throw new Error(data.error || 'Delete failed');
       router.refresh();
     } catch (err: any) {
-      alert(`Error: ${err.message}`);
+      alert(err?.message || 'Delete failed');
     } finally {
       setDeletingId(null);
     }
@@ -201,9 +200,12 @@ export function RawMaterialsManager({ materials }: RawMaterialsManagerProps) {
   };
 
   const filtered = materials.filter((m) => {
+    const q = search.toLowerCase();
     const matchesSearch =
-      m.name.toLowerCase().includes(search.toLowerCase()) ||
-      m.type.toLowerCase().includes(search.toLowerCase());
+      m.name.toLowerCase().includes(q) ||
+      m.type.toLowerCase().includes(q) ||
+      (m.batch_lot_no && m.batch_lot_no.toLowerCase().includes(q)) ||
+      (m.shade && m.shade.toLowerCase().includes(q));
     const matchesType = selectedType === 'all' || m.type === selectedType;
     return matchesSearch && matchesType;
   });
@@ -214,7 +216,6 @@ export function RawMaterialsManager({ materials }: RawMaterialsManagerProps) {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#CFE0D5]">
         <div>
           <div className="flex items-center gap-2 text-xs font-bold text-primary uppercase tracking-wider">
@@ -225,7 +226,7 @@ export function RawMaterialsManager({ materials }: RawMaterialsManagerProps) {
             Raw Materials ({materials.length})
           </h1>
           <p className="text-xs text-muted">
-            Track denim fabrics, threads, YKK zippers, rivets, and factory trims.
+            Track denim fabric rolls (Lot #, GSM, Shade), threads, YKK zippers, rivets, and factory trims.
           </p>
         </div>
 
@@ -248,7 +249,6 @@ export function RawMaterialsManager({ materials }: RawMaterialsManagerProps) {
         </div>
       </div>
 
-      {/* Low Stock Warning Banner if any */}
       {lowStockCount > 0 && (
         <div className="p-4 rounded-2xl bg-warning/15 border border-warning/30 flex items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-2 text-warning font-bold">
@@ -266,7 +266,6 @@ export function RawMaterialsManager({ materials }: RawMaterialsManagerProps) {
         </div>
       )}
 
-      {/* Filters and Search Bar */}
       <div className="bg-white p-4 rounded-2xl border border-[#CFE0D5] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="relative flex-1 max-w-md">
           <Search className="w-4 h-4 text-muted absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -274,7 +273,7 @@ export function RawMaterialsManager({ materials }: RawMaterialsManagerProps) {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search materials by name or category..."
+            placeholder="Search by material name, roll lot #, shade, or type..."
             className="w-full pl-9 pr-4 py-2 rounded-xl border border-[#CFE0D5] bg-[#F0F7F2]/50 text-xs text-text focus:outline-none focus:border-primary font-medium"
           />
         </div>
@@ -308,13 +307,12 @@ export function RawMaterialsManager({ materials }: RawMaterialsManagerProps) {
         </div>
       </div>
 
-      {/* Materials Table */}
       <div className="bg-white rounded-2xl border border-[#CFE0D5] shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="border-b border-[#CFE0D5] bg-[#F0F7F2] text-primary font-bold text-3xs uppercase tracking-wider">
-                <th className="py-3 px-4">Raw Material</th>
+                <th className="py-3 px-4">Raw Material & Roll Spec</th>
                 <th className="py-3 px-3">Type</th>
                 <th className="py-3 px-3">Current Stock</th>
                 <th className="py-3 px-3">Reorder Point</th>
@@ -331,7 +329,24 @@ export function RawMaterialsManager({ materials }: RawMaterialsManagerProps) {
                     <tr key={m.id} className="hover:bg-[#F0F7F2]/40 transition-colors">
                       <td className="py-3 px-4">
                         <span className="font-bold text-text block">{m.name}</span>
-                        <span className="text-3xs text-muted font-mono">Unit: {m.unit}</span>
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1 text-3xs font-mono text-muted">
+                          <span>Unit: {m.unit}</span>
+                          {m.batch_lot_no && (
+                            <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                              Lot: {m.batch_lot_no}
+                            </span>
+                          )}
+                          {m.gsm != null && (
+                            <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                              {m.gsm} GSM / oz
+                            </span>
+                          )}
+                          {m.shade && (
+                            <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              Shade: {m.shade}
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       <td className="py-3 px-3">
@@ -415,14 +430,13 @@ export function RawMaterialsManager({ materials }: RawMaterialsManagerProps) {
         </div>
       </div>
 
-      {/* Modal 1: Create / Edit Material */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
             className="fixed inset-0 bg-black/50 backdrop-blur-xs"
             onClick={() => !loading && setModalOpen(false)}
           />
-          <div className="relative bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-[#CFE0D5] space-y-5 z-10 animate-in zoom-in-95 duration-200">
+          <div className="relative bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-[#CFE0D5] space-y-5 z-10 max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-[#CFE0D5]">
               <h2 className="text-base font-black text-text">
                 {editingMaterial ? `Edit: ${editingMaterial.name}` : 'Register New Raw Material'}
@@ -536,6 +550,46 @@ export function RawMaterialsManager({ materials }: RawMaterialsManagerProps) {
                 </div>
               </div>
 
+              {/* Roll Lot / GSM / Shade Specs */}
+              <div className="p-3 rounded-xl bg-[#F0F7F2]/60 border border-[#CFE0D5] space-y-3">
+                <span className="text-3xs font-bold uppercase tracking-wider text-primary block">
+                  Fabric Roll & Mill Traceability (Optional)
+                </span>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-3xs font-bold text-muted mb-1">Roll / Lot #</label>
+                    <input
+                      type="text"
+                      value={batchLotNo}
+                      onChange={(e) => setBatchLotNo(e.target.value)}
+                      placeholder="LOT-A24"
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-[#CFE0D5] bg-white font-mono text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-3xs font-bold text-muted mb-1">GSM / Weight</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={gsm}
+                      onChange={(e) => setGsm(e.target.value)}
+                      placeholder="390"
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-[#CFE0D5] bg-white font-mono text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-3xs font-bold text-muted mb-1">Dye Shade</label>
+                    <input
+                      type="text"
+                      value={shade}
+                      onChange={(e) => setShade(e.target.value)}
+                      placeholder="Indigo-B2"
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-[#CFE0D5] bg-white text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#CFE0D5]">
                 <button
                   type="button"
@@ -559,7 +613,6 @@ export function RawMaterialsManager({ materials }: RawMaterialsManagerProps) {
         </div>
       )}
 
-      {/* Modal 2: Stock Adjustment (Logs to Stock Ledger) */}
       {adjustModalOpen && adjustingMaterial && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div

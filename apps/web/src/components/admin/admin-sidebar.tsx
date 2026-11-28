@@ -31,6 +31,9 @@ import {
   Star,
   RotateCcw,
   ShieldCheck,
+  ClipboardCheck,
+  Wrench,
+  Receipt,
 } from 'lucide-react';
 import {
   AdminModule,
@@ -57,6 +60,9 @@ const MODULE_ICON_MAP: Record<AdminModule, any> = {
   erp_production: Layers,
   erp_stock_ledger: Activity,
   erp_b2b_tiers: Percent,
+  erp_qc: ClipboardCheck,
+  erp_job_work: Wrench,
+  erp_wholesale: Receipt,
   crm_customers: Users,
   crm_leads: Contact,
   crm_followups: CalendarClock,

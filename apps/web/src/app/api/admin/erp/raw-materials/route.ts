@@ -8,14 +8,21 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await verifyApiPermission('erp_raw_materials');
     if (!auth.allowed) {
-      return NextResponse.json({ error: auth.status === 401 ? 'Unauthorized' : 'Forbidden: Missing permission' }, { status: auth.status });
+      return NextResponse.json(
+        { error: auth.status === 401 ? 'Unauthorized' : 'Forbidden: Missing permission' },
+        { status: auth.status }
+      );
     }
     const supabase = createClient();
 
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type');
 
-    let query = supabase.from('raw_materials').select('*').order('type', { ascending: true }).order('name', { ascending: true });
+    let query = supabase
+      .from('raw_materials')
+      .select('*')
+      .order('type', { ascending: true })
+      .order('name', { ascending: true });
 
     if (type && type !== 'all') {
       query = query.eq('type', type);
@@ -35,33 +42,49 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await verifyApiPermission('erp_raw_materials');
     if (!auth.allowed) {
-      return NextResponse.json({ error: auth.status === 401 ? 'Unauthorized' : 'Forbidden: Missing permission' }, { status: auth.status });
+      return NextResponse.json(
+        { error: auth.status === 401 ? 'Unauthorized' : 'Forbidden: Missing permission' },
+        { status: auth.status }
+      );
     }
     const supabase = createClient();
 
     const body = await request.json();
-    const { name, type, unit, stock_qty = 0, reorder_level = 10, unit_price = 0 } = body;
+    const {
+      name,
+      type,
+      unit,
+      stock_qty = 0,
+      reorder_level = 10,
+      unit_price = 0,
+      batch_lot_no,
+      gsm,
+      shade,
+    } = body;
 
     if (!name || !type || !unit) {
       return NextResponse.json({ error: 'Name, type, and unit are required' }, { status: 400 });
     }
 
-    // 1. Insert raw material
+    const gsmValue = gsm !== undefined && gsm !== null && gsm !== '' ? Number(gsm) : null;
+
     const { data: material, error } = (await (supabase.from('raw_materials') as any)
       .insert({
-        name,
+        name: String(name).trim(),
         type,
         unit,
-        stock_qty: Number(stock_qty),
-        reorder_level: Number(reorder_level),
-        unit_price: Number(unit_price),
+        stock_qty: Number(stock_qty || 0),
+        reorder_level: Number(reorder_level || 0),
+        unit_price: Number(unit_price || 0),
+        batch_lot_no: batch_lot_no ? String(batch_lot_no).trim() : null,
+        gsm: Number.isFinite(gsmValue) ? gsmValue : null,
+        shade: shade ? String(shade).trim() : null,
       })
       .select('*')
       .single()) as any;
 
     if (error) throw error;
 
-    // 2. If initial stock > 0, log in stock_ledger
     if (Number(stock_qty) > 0) {
       await (supabase.from('stock_ledger') as any).insert({
         item_type: 'raw_material',
@@ -82,18 +105,33 @@ export async function PUT(request: NextRequest) {
   try {
     const auth = await verifyApiPermission('erp_raw_materials');
     if (!auth.allowed) {
-      return NextResponse.json({ error: auth.status === 401 ? 'Unauthorized' : 'Forbidden: Missing permission' }, { status: auth.status });
+      return NextResponse.json(
+        { error: auth.status === 401 ? 'Unauthorized' : 'Forbidden: Missing permission' },
+        { status: auth.status }
+      );
     }
     const supabase = createClient();
 
     const body = await request.json();
-    const { id, name, type, unit, stock_qty, reorder_level, unit_price, adjust_change, adjust_reason } = body;
+    const {
+      id,
+      name,
+      type,
+      unit,
+      stock_qty,
+      reorder_level,
+      unit_price,
+      batch_lot_no,
+      gsm,
+      shade,
+      adjust_change,
+      adjust_reason,
+    } = body;
 
     if (!id) {
       return NextResponse.json({ error: 'Material ID is required' }, { status: 400 });
     }
 
-    // Fetch existing material
     const { data: existing, error: fetchErr } = (await supabase
       .from('raw_materials')
       .select('*')
@@ -106,10 +144,9 @@ export async function PUT(request: NextRequest) {
 
     let nextStock = existing.stock_qty;
 
-    // Handle manual stock adjustment with immutable ledger entry
     if (adjust_change !== undefined && adjust_change !== null) {
       const changeNum = Number(adjust_change);
-      nextStock = Number(existing.stock_qty) + changeNum;
+      nextStock = Math.max(0, Number(existing.stock_qty) + changeNum);
 
       await (supabase.from('stock_ledger') as any).insert({
         item_type: 'raw_material',
@@ -126,11 +163,21 @@ export async function PUT(request: NextRequest) {
       stock_qty: nextStock,
     };
 
-    if (name) updatePayload.name = name;
+    if (name) updatePayload.name = String(name).trim();
     if (type) updatePayload.type = type;
     if (unit) updatePayload.unit = unit;
     if (reorder_level !== undefined) updatePayload.reorder_level = Number(reorder_level);
     if (unit_price !== undefined) updatePayload.unit_price = Number(unit_price);
+    if (batch_lot_no !== undefined) {
+      updatePayload.batch_lot_no = batch_lot_no ? String(batch_lot_no).trim() : null;
+    }
+    if (shade !== undefined) {
+      updatePayload.shade = shade ? String(shade).trim() : null;
+    }
+    if (gsm !== undefined) {
+      const g = gsm !== null && gsm !== '' ? Number(gsm) : null;
+      updatePayload.gsm = Number.isFinite(g) ? g : null;
+    }
 
     const { data: updated, error: updateErr } = (await (supabase.from('raw_materials') as any)
       .update(updatePayload)
@@ -151,7 +198,10 @@ export async function DELETE(request: NextRequest) {
   try {
     const auth = await verifyApiPermission('erp_raw_materials');
     if (!auth.allowed) {
-      return NextResponse.json({ error: auth.status === 401 ? 'Unauthorized' : 'Forbidden: Missing permission' }, { status: auth.status });
+      return NextResponse.json(
+        { error: auth.status === 401 ? 'Unauthorized' : 'Forbidden: Missing permission' },
+        { status: auth.status }
+      );
     }
     const supabase = createClient();
 

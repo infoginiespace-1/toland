@@ -10,7 +10,7 @@ export default async function AdminBOMsPage() {
   const [{ data: products }, { data: rawMaterials }, { data: boms }] = await Promise.all([
     supabase
       .from('products')
-      .select('id, name, slug, base_price')
+      .select('id, name, slug, base_price, labor_cost_per_piece, overhead_cost_per_piece')
       .order('name', { ascending: true }),
     supabase
       .from('raw_materials')
@@ -21,7 +21,7 @@ export default async function AdminBOMsPage() {
       .from('boms')
       .select(`
         *,
-        product:products (id, name, slug),
+        product:products (id, name, slug, base_price, labor_cost_per_piece, overhead_cost_per_piece),
         raw_material:raw_materials (*)
       `)
       .order('created_at', { ascending: false }),

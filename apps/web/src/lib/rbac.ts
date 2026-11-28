@@ -23,6 +23,9 @@ export type AdminModule =
   | 'erp_production'
   | 'erp_stock_ledger'
   | 'erp_b2b_tiers'
+  | 'erp_qc'
+  | 'erp_job_work'
+  | 'erp_wholesale'
   | 'crm_customers'
   | 'crm_leads'
   | 'crm_followups'
@@ -98,6 +101,9 @@ export const PERMISSION_GROUPS: PermissionGroupMeta[] = [
       { key: 'erp_production', label: 'Production Runs', href: '/admin/erp/production', description: 'Batch cutting, wash & QC runs' },
       { key: 'erp_stock_ledger', label: 'Stock Ledger', href: '/admin/erp/stock-ledger', description: 'Material inward/outward audit' },
       { key: 'erp_b2b_tiers', label: 'B2B Price Tiers', href: '/admin/erp/b2b-tiers', description: 'Wholesale MOQ slab pricing' },
+      { key: 'erp_qc', label: 'QC & Defect Lab', href: '/admin/erp/qc', description: 'Fabric roll & stage defect inspections' },
+      { key: 'erp_job_work', label: 'Karigar & Job Work', href: '/admin/erp/job-work', description: 'Outwork challans & karigar piece-rate wages' },
+      { key: 'erp_wholesale', label: 'B2B Quotes & Khata', href: '/admin/erp/wholesale', description: 'Wholesale proforma quotes & buyer credit ledger' },
     ],
   },
   {
@@ -163,6 +169,8 @@ export const ROLE_META: Record<
       'erp_production',
       'erp_stock_ledger',
       'erp_b2b_tiers',
+      'erp_qc',
+      'erp_job_work',
     ],
   },
   sales_crm: {
@@ -174,6 +182,8 @@ export const ROLE_META: Record<
       'dashboard',
       'orders',
       'returns',
+      'erp_b2b_tiers',
+      'erp_wholesale',
       'crm_customers',
       'crm_leads',
       'crm_followups',
@@ -337,6 +347,9 @@ export function requiredModuleForAdminPath(pathname: string): AdminModule {
   if (pathname.startsWith('/admin/erp/production')) return 'erp_production';
   if (pathname.startsWith('/admin/erp/stock-ledger')) return 'erp_stock_ledger';
   if (pathname.startsWith('/admin/erp/b2b-tiers')) return 'erp_b2b_tiers';
+  if (pathname.startsWith('/admin/erp/qc')) return 'erp_qc';
+  if (pathname.startsWith('/admin/erp/job-work')) return 'erp_job_work';
+  if (pathname.startsWith('/admin/erp/wholesale')) return 'erp_wholesale';
   if (pathname.startsWith('/admin/erp')) return 'erp_overview';
 
   if (pathname.startsWith('/admin/crm/customers')) return 'crm_customers';
