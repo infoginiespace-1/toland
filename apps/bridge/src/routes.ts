@@ -19,7 +19,7 @@ router.get('/status', async (req: Request, res: Response) => {
     const queueStatsRes = await query(`
       SELECT
         COUNT(*) FILTER (WHERE status = 'queued') as queued_count,
-        COUNT(*) FILTER (WHERE status = 'sent' AND sent_at >= CURRENT_DATE) as sent_today
+        COUNT(*) FILTER (WHERE status = 'sent' AND (sent_at AT TIME ZONE 'Asia/Kolkata')::date = (NOW() AT TIME ZONE 'Asia/Kolkata')::date) as sent_today
       FROM public.wa_messages
     `);
 
@@ -234,4 +234,10 @@ router.post('/resume', async (req: Request, res: Response) => {
   } catch (err: any) {
     res.status(500).json({ error: err?.message || 'Failed to resume queue' });
   }
+});
+
+// 9. POST /trigger-queue (Immediate wakeup after web panel inserts message/campaign)
+router.post('/trigger-queue', (_req: Request, res: Response) => {
+  queueWorker.triggerImmediate();
+  res.json({ success: true, message: 'Queue worker triggered immediately' });
 });

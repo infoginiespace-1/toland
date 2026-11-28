@@ -14,7 +14,7 @@ export default async function AdminWhatsAppAutoRepliesPage() {
       .order('created_at', { ascending: false }),
     supabase
       .from('wa_templates')
-      .select('key, name')
+      .select('key, name, body')
       .eq('is_active', true)
       .order('name', { ascending: true }),
   ]);

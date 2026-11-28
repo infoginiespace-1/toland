@@ -54,6 +54,7 @@ export class WhatsAppQueueWorker {
 
   private async tick(): Promise<void> {
     try {
+      await this.processDueCampaigns();
       await this.processNextMessage();
     } catch (err) {
       console.error('[QueueWorker] Error in queue processing tick:', err);
@@ -62,11 +63,95 @@ export class WhatsAppQueueWorker {
     }
   }
 
-  // Check if current local time is within quiet hours (e.g., 22:00 to 08:00)
+  // Enqueue any scheduled broadcast campaigns whose scheduled_at has arrived & complete finished campaigns
+  private async processDueCampaigns(): Promise<void> {
+    try {
+      // 1. Auto-complete any 'running' campaigns whose queued messages have finished sending
+      await query(`
+        UPDATE public.wa_campaigns c
+        SET status = 'completed', updated_at = NOW()
+        WHERE c.status = 'running'
+          AND EXISTS (
+            SELECT 1 FROM public.wa_messages m WHERE m.metadata->>'campaign_id' = c.id::text
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM public.wa_messages m WHERE m.metadata->>'campaign_id' = c.id::text AND m.status = 'queued'
+          )
+      `);
+
+      // 2. Check due scheduled campaigns
+      const dueRes = await query(
+        `SELECT c.id, c.name, c.template_key, c.segment_filter, t.body AS template_body
+         FROM public.wa_campaigns c
+         JOIN public.wa_templates t ON c.template_key = t.key
+         WHERE c.status = 'scheduled'
+           AND (c.scheduled_at IS NULL OR c.scheduled_at <= NOW())
+         LIMIT 1`
+      );
+      if (dueRes.rows.length === 0) return;
+
+      const camp = dueRes.rows[0];
+      const audience = camp.segment_filter?.audience || 'all';
+
+      // Fetch opted-in recipients based on segment
+      let recipients: Array<{ phone: string; name: string }> = [];
+      if (audience === 'wholesale') {
+        const leadsRes = await query(
+          `SELECT phone, name FROM public.leads WHERE phone IS NOT NULL
+           UNION
+           SELECT phone, name FROM public.customers_crm WHERE opt_in_whatsapp = true AND ('wholesale' = ANY(tags) OR stage = 'vip')`
+        );
+        recipients = leadsRes.rows;
+      } else if (audience === 'vip') {
+        const crmRes = await query(
+          `SELECT phone, name FROM public.customers_crm WHERE opt_in_whatsapp = true AND stage = 'vip'`
+        );
+        recipients = crmRes.rows;
+      } else {
+        const crmRes = await query(
+          `SELECT phone, name FROM public.customers_crm WHERE opt_in_whatsapp = true`
+        );
+        recipients = crmRes.rows;
+      }
+
+      // Deduplicate by last 10 digits & exclude wa_optouts
+      const optoutRes = await query(`SELECT phone FROM public.wa_optouts`);
+      const optoutSet = new Set(optoutRes.rows.map((r: any) => String(r.phone || '').replace(/\D/g, '').slice(-10)));
+      const seenPhones = new Set<string>();
+
+      let queuedCount = 0;
+      for (const rec of recipients) {
+        const digits = String(rec.phone || '').replace(/\D/g, '').slice(-10);
+        if (digits.length < 10 || optoutSet.has(digits) || seenPhones.has(digits)) continue;
+        seenPhones.add(digits);
+
+        const formattedPhone = `91${digits}`;
+        const body = String(camp.template_body || '')
+          .replace(/\{\{\s*name\s*\}\}/gi, rec.name || 'Valued Customer');
+
+        await query(
+          `INSERT INTO public.wa_messages (direction, phone, body, priority, template_key, status, metadata, created_at)
+           VALUES ('outbound', $1, $2, 3, $3, 'queued', $4::jsonb, NOW())`,
+          [formattedPhone, body, camp.template_key, JSON.stringify({ campaign_id: camp.id })]
+        );
+        queuedCount++;
+      }
+
+      await query(
+        `UPDATE public.wa_campaigns SET status = 'running', updated_at = NOW() WHERE id = $1`,
+        [camp.id]
+      );
+      console.log(`[QueueWorker] Campaign "${camp.name}" activated: queued ${queuedCount} messages.`);
+    } catch (err) {
+      console.error('[QueueWorker] Error processing due campaigns:', err);
+    }
+  }
+
+  // Check if current IST (Asia/Kolkata, UTC+5:30) time is within quiet hours (e.g., 22:00 to 08:00)
   private isQuietHours(startStr: string, endStr: string): boolean {
-    const now = new Date();
-    const currentHours = now.getHours();
-    const currentMinutes = now.getMinutes();
+    const istNow = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+    const currentHours = istNow.getUTCHours();
+    const currentMinutes = istNow.getUTCMinutes();
     const currentVal = currentHours * 60 + currentMinutes;
 
     const [startH, startM] = startStr.split(':').map(Number);
@@ -119,11 +204,11 @@ export class WhatsAppQueueWorker {
       }
     }
 
-    // 2. Volume & Cap Checks
+    // 2. Volume & Cap Checks (IST Day Boundary)
     const statsRes = await query(`
       SELECT 
         COUNT(*) FILTER (WHERE sent_at >= NOW() - INTERVAL '1 hour') as sent_last_hour,
-        COUNT(*) FILTER (WHERE sent_at >= CURRENT_DATE) as sent_today
+        COUNT(*) FILTER (WHERE (sent_at AT TIME ZONE 'Asia/Kolkata')::date = (NOW() AT TIME ZONE 'Asia/Kolkata')::date) as sent_today
       FROM public.wa_messages
       WHERE status = 'sent' AND direction = 'outbound'
     `);
@@ -170,11 +255,14 @@ export class WhatsAppQueueWorker {
 
     const message = msgRes.rows[0];
 
-    // 4. Opt-Out Check (Rule 7)
-    const optoutRes = await query(
-      'SELECT id FROM public.wa_optouts WHERE phone = $1 LIMIT 1',
-      [message.phone]
-    );
+    // 4. Opt-Out Check (Rule 7 — normalized last 10 digits)
+    const digits10 = String(message.phone || '').replace(/\D/g, '').slice(-10);
+    const optoutRes = digits10
+      ? await query(
+          `SELECT id FROM public.wa_optouts WHERE RIGHT(REGEXP_REPLACE(phone, '[^0-9]', '', 'g'), 10) = $1 LIMIT 1`,
+          [digits10]
+        )
+      : { rows: [] };
     if (optoutRes.rows.length > 0 && message.priority === 3) {
       // Recipient opted out of marketing
       await query(

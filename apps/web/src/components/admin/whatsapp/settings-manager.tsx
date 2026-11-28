@@ -26,6 +26,10 @@ interface SettingsItem {
   warmup_enabled: boolean;
   warmup_day: number;
   autoreply_enabled: boolean;
+  queue_paused?: boolean;
+  failure_streak?: number;
+  failure_threshold?: number;
+  fallback_to_cloud_api?: boolean;
 }
 
 interface SettingsManagerProps {
@@ -44,10 +48,42 @@ export function SettingsManager({ settings }: SettingsManagerProps) {
   const [warmupEnabled, setWarmupEnabled] = useState(settings?.warmup_enabled ?? true);
   const [warmupDay, setWarmupDay] = useState(settings?.warmup_day || 1);
   const [autoReplyEnabled, setAutoReplyEnabled] = useState(settings?.autoreply_enabled ?? true);
+  const [queuePaused, setQueuePaused] = useState(settings?.queue_paused ?? false);
+  const [failureStreak, setFailureStreak] = useState(settings?.failure_streak || 0);
+  const [fallbackCloudApi, setFallbackCloudApi] = useState(settings?.fallback_to_cloud_api ?? false);
+  const [queueActionLoading, setQueueActionLoading] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleToggleQueuePause = async () => {
+    setQueueActionLoading(true);
+    setError(null);
+    const nextPaused = !queuePaused;
+    try {
+      const res = await fetch('/api/admin/whatsapp/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: settings?.id,
+          queue_paused: nextPaused,
+          failure_streak: nextPaused ? failureStreak : 0,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to update queue state');
+      setQueuePaused(nextPaused);
+      if (!nextPaused) setFailureStreak(0);
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+      router.refresh();
+    } catch (err: any) {
+      setError(err?.message || 'Error updating queue state');
+    } finally {
+      setQueueActionLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,6 +111,7 @@ export function SettingsManager({ settings }: SettingsManagerProps) {
           warmup_enabled: warmupEnabled,
           warmup_day: Number(warmupDay),
           autoreply_enabled: autoReplyEnabled,
+          fallback_to_cloud_api: fallbackCloudApi,
         }),
       });
 
@@ -116,6 +153,44 @@ export function SettingsManager({ settings }: SettingsManagerProps) {
           <span>{error}</span>
         </div>
       )}
+
+      {/* Emergency Queue Control & Health Card */}
+      <div
+        className={`p-5 rounded-xl border shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+          queuePaused
+            ? 'bg-rose-50 border-rose-300'
+            : 'bg-emerald-50/60 border-[#CFE0D5]'
+        }`}
+      >
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <Zap className={`w-4 h-4 ${queuePaused ? 'text-rose-600' : 'text-emerald-600'}`} />
+            <h2 className="text-sm font-bold text-slate-900">
+              Queue Worker Status: {queuePaused ? 'PAUSED' : 'ACTIVE & PROCESSING'}
+            </h2>
+          </div>
+          <p className="text-xs text-slate-600">
+            Consecutive Delivery Failure Streak: <strong className="font-mono">{failureStreak} / {settings?.failure_threshold || 5}</strong>.{' '}
+            {queuePaused
+              ? 'Messages are held in queue until you resume processing.'
+              : 'Outgoing OTPs, order alerts, and campaigns are dispatching normally.'}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleToggleQueuePause}
+          disabled={queueActionLoading}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-1.5 shrink-0 cursor-pointer disabled:opacity-50 ${
+            queuePaused
+              ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+              : 'bg-white border border-rose-300 text-rose-700 hover:bg-rose-50'
+          }`}
+        >
+          {queueActionLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+          <span>{queuePaused ? 'Resume Queue & Reset Streak' : 'Emergency Pause Queue'}</span>
+        </button>
+      </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Anti-Ban Safeguards Card */}
@@ -232,17 +307,33 @@ export function SettingsManager({ settings }: SettingsManagerProps) {
               <p className="text-[11px] text-gray-500 mt-1">Standard: 08:00 (8:00 AM).</p>
             </div>
 
-            <div className="sm:col-span-2 pt-2 border-t border-gray-100 flex items-center justify-between">
+            <div className="sm:col-span-2 pt-2 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <p className="text-xs font-bold text-gray-900">SIM Warmup Mode</p>
-                <p className="text-[11px] text-gray-500">Gradually ramps daily volume over 14 days to build number trust score.</p>
+                <p className="text-xs font-bold text-gray-900">SIM Warmup Mode &amp; Day Ramp</p>
+                <p className="text-[11px] text-gray-500">
+                  Day 1: 50/day · Day 2: 100/day · Day 3: 200/day · Day 4: 350/day · Day 5+: 500/day
+                </p>
               </div>
-              <input
-                type="checkbox"
-                checked={warmupEnabled}
-                onChange={(e) => setWarmupEnabled(e.target.checked)}
-                className="h-5 w-5 rounded border-[#CFE0D5] text-[#14532D] focus:ring-[#14532D]"
-              />
+              <div className="flex items-center gap-3">
+                <select
+                  value={warmupDay}
+                  onChange={(e) => setWarmupDay(Number(e.target.value))}
+                  disabled={!warmupEnabled}
+                  className="px-2.5 py-1.5 rounded-lg border border-[#CFE0D5] text-xs font-semibold bg-white disabled:opacity-40"
+                >
+                  {[1, 2, 3, 4, 5, 7, 10, 14].map((d) => (
+                    <option key={d} value={d}>
+                      Warmup Day {d}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="checkbox"
+                  checked={warmupEnabled}
+                  onChange={(e) => setWarmupEnabled(e.target.checked)}
+                  className="h-5 w-5 rounded border-[#CFE0D5] text-[#14532D] focus:ring-[#14532D]"
+                />
+              </div>
             </div>
 
             <div className="sm:col-span-2 pt-2 border-t border-gray-100 flex items-center justify-between">
@@ -254,6 +345,19 @@ export function SettingsManager({ settings }: SettingsManagerProps) {
                 type="checkbox"
                 checked={autoReplyEnabled}
                 onChange={(e) => setAutoReplyEnabled(e.target.checked)}
+                className="h-5 w-5 rounded border-[#CFE0D5] text-[#14532D] focus:ring-[#14532D]"
+              />
+            </div>
+
+            <div className="sm:col-span-2 pt-2 border-t border-gray-100 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-gray-900">Meta Cloud API Fallback</p>
+                <p className="text-[11px] text-gray-500">Failover to official WhatsApp Cloud API if Baileys device disconnects.</p>
+              </div>
+              <input
+                type="checkbox"
+                checked={fallbackCloudApi}
+                onChange={(e) => setFallbackCloudApi(e.target.checked)}
                 className="h-5 w-5 rounded border-[#CFE0D5] text-[#14532D] focus:ring-[#14532D]"
               />
             </div>

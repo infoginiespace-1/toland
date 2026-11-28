@@ -29,6 +29,7 @@ interface AutoReplyRule {
 interface TemplateOption {
   key: string;
   name: string;
+  body?: string;
 }
 
 interface AutoReplyManagerProps {
@@ -49,6 +50,55 @@ export function AutoReplyManager({ rules, templates }: AutoReplyManagerProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [testInput, setTestInput] = useState('');
+  const [testResult, setTestResult] = useState<{
+    matched: boolean;
+    rule?: AutoReplyRule;
+    previewBody?: string;
+  } | null>(null);
+
+  const runBotSimulator = (e: React.FormEvent) => {
+    e.preventDefault();
+    const raw = testInput.trim();
+    if (!raw) return;
+    const norm = raw.toLowerCase();
+
+    for (const rule of rules) {
+      if (!rule.is_active) continue;
+      const kw = (rule.keyword || '').trim();
+      if (!kw) continue;
+
+      let matched = false;
+      if (rule.match_type === 'exact') {
+        matched = norm === kw.toLowerCase();
+      } else if (rule.match_type === 'regex') {
+        try {
+          matched = new RegExp(kw, 'i').test(raw);
+        } catch {
+          matched = false;
+        }
+      } else {
+        matched = norm.includes(kw.toLowerCase());
+      }
+
+      if (matched) {
+        const tpl = templates.find((t) => t.key === rule.reply_template_key);
+        const fallback =
+          `Namaste Valued Customer! Welcome to *TOLAND Denim Pvt. Ltd.* (Sheikhpura, Bihar).\n` +
+          `• Shop Denim: https://toland-web.vercel.app/products\n` +
+          `• Track Order: https://toland-web.vercel.app/track-order\n` +
+          `• Bulk Wholesale: https://toland-web.vercel.app/b2b`;
+        setTestResult({
+          matched: true,
+          rule,
+          previewBody: tpl?.body || fallback,
+        });
+        return;
+      }
+    }
+
+    setTestResult({ matched: false });
+  };
 
   const openCreateModal = () => {
     setKeyword('');
@@ -156,6 +206,60 @@ export function AutoReplyManager({ rules, templates }: AutoReplyManagerProps) {
           <Plus className="w-4 h-4" />
           Add Bot Rule
         </button>
+      </div>
+
+      {/* Live Auto-Reply Simulator */}
+      <div className="bg-white rounded-xl border border-[#CFE0D5] p-4 shadow-xs space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-xs font-bold text-[#14532D] uppercase tracking-wider">
+            <Sparkles className="w-4 h-4 text-emerald-600" />
+            <span>Bot Trigger Simulator (Test Exact / Contains / Regex)</span>
+          </div>
+        </div>
+        <form onSubmit={runBotSimulator} className="flex flex-col sm:flex-row gap-2">
+          <input
+            type="text"
+            value={testInput}
+            onChange={(e) => setTestInput(e.target.value)}
+            placeholder="Type sample customer message (e.g. 'Hi, send denim price catalog' or 'TRACK')"
+            className="flex-1 px-3 py-2 text-xs rounded-lg border border-[#CFE0D5] bg-[#F0F7F2]/40 focus:outline-none focus:ring-1 focus:ring-[#14532D]"
+          />
+          <button
+            type="submit"
+            className="px-4 py-2 rounded-lg bg-[#14532D] text-white text-xs font-semibold hover:bg-[#14532D]/90 transition cursor-pointer shrink-0"
+          >
+            Test Match
+          </button>
+        </form>
+
+        {testResult && (
+          <div
+            className={`p-3 rounded-lg border text-xs ${
+              testResult.matched
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                : 'bg-amber-50 border-amber-200 text-amber-900'
+            }`}
+          >
+            {testResult.matched && testResult.rule ? (
+              <div className="space-y-1.5">
+                <div className="font-bold flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>
+                    Matched Rule: &quot;{testResult.rule.keyword}&quot; ({testResult.rule.match_type.toUpperCase()})
+                  </span>
+                </div>
+                <pre className="text-[11px] font-mono bg-white/80 p-2 rounded border border-emerald-200/70 whitespace-pre-wrap text-slate-700">
+                  {testResult.previewBody}
+                </pre>
+              </div>
+            ) : (
+              <div className="font-semibold flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-600" />
+                <span>No active rule matched this message. Consider adding a &quot;contains&quot; or &quot;regex&quot; trigger.</span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Rules Table */}

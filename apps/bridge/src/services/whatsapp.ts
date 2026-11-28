@@ -28,10 +28,14 @@ export class BaileysWhatsAppService implements WhatsAppProvider {
     return this.sock !== null && !this.isConnecting;
   }
 
-  // Format phone to WhatsApp JID: 919876543210 -> 919876543210@s.whatsapp.net
+  // Format phone to WhatsApp JID: 919876543210 -> 919876543210@s.whatsapp.net (preserve @lid or @s.whatsapp.net if present)
   public formatJid(phone: string): string {
+    if (phone.includes('@')) {
+      return phone;
+    }
     const clean = phone.replace(/[^0-9]/g, '');
-    return clean.includes('@s.whatsapp.net') ? clean : `${clean}@s.whatsapp.net`;
+    const normalized = clean.length === 10 ? `91${clean}` : clean;
+    return `${normalized}@s.whatsapp.net`;
   }
 
   // Request 8-digit Pairing Code alternative to QR
@@ -271,15 +275,27 @@ export class BaileysWhatsAppService implements WhatsAppProvider {
           if (!msg.message || msg.key.fromMe) continue;
 
           const remoteJid = msg.key.remoteJid || '';
-          if (remoteJid.includes('@g.us') || remoteJid.includes('broadcast')) continue;
+          if (remoteJid.includes('@g.us') || remoteJid.includes('broadcast') || remoteJid === 'status@broadcast') continue;
 
-          const senderPhone = remoteJid.replace('@s.whatsapp.net', '');
+          // Resolve actual phone from remoteJidAlt if multi-device @lid JID is used
+          const altJid = (msg.key as any).remoteJidAlt || '';
+          const preferredJid = altJid.includes('@s.whatsapp.net') ? altJid : remoteJid;
+          const senderPhone = preferredJid.includes('@s.whatsapp.net')
+            ? preferredJid.replace('@s.whatsapp.net', '').replace(/[^0-9]/g, '')
+            : preferredJid.replace(/@.+$/, '');
+          const replyTarget = preferredJid.includes('@lid') ? preferredJid : senderPhone;
+
           const text =
             msg.message.conversation ||
             msg.message.extendedTextMessage?.text ||
+            msg.message.imageMessage?.caption ||
+            msg.message.videoMessage?.caption ||
+            msg.message.buttonsResponseMessage?.selectedDisplayText ||
+            msg.message.listResponseMessage?.title ||
             '';
 
           if (!text) continue;
+          const pushName = msg.pushName || undefined;
           console.log(`[Baileys] Inbound message from ${senderPhone}: "${text}"`);
 
           // 1. Record inbound message in database
@@ -303,7 +319,7 @@ export class BaileysWhatsAppService implements WhatsAppProvider {
               [senderPhone]
             );
             await this.sendMessage(
-              senderPhone,
+              replyTarget,
               'You have successfully unsubscribed from TOLAND promotional updates. Reply START or शुरू to opt in again.'
             );
             continue;
@@ -312,14 +328,14 @@ export class BaileysWhatsAppService implements WhatsAppProvider {
           if (cleanText === 'START' || cleanText === 'शुरू') {
             await query('DELETE FROM public.wa_optouts WHERE phone = $1', [senderPhone]);
             await this.sendMessage(
-              senderPhone,
+              replyTarget,
               'Welcome back! You have resubscribed to TOLAND updates and offers.'
             );
             continue;
           }
 
           // 3. Auto-reply rules evaluation
-          await this.processAutoReply(senderPhone, text);
+          await this.processAutoReply(replyTarget, senderPhone, text, pushName);
         }
       });
     } catch (err) {
@@ -330,37 +346,109 @@ export class BaileysWhatsAppService implements WhatsAppProvider {
     }
   }
 
-  // Auto-reply processor matching keywords against wa_autoreply_rules
-  private async processAutoReply(phone: string, text: string): Promise<void> {
+  // Auto-reply processor matching keywords (exact, contains, regex) against wa_autoreply_rules
+  private async processAutoReply(
+    replyTarget: string,
+    senderPhone: string,
+    text: string,
+    pushName?: string
+  ): Promise<void> {
     try {
       const settingsRes = await query('SELECT autoreply_enabled FROM public.wa_settings LIMIT 1');
       const isEnabled = settingsRes.rows[0]?.autoreply_enabled ?? true;
       if (!isEnabled) return;
 
       const rulesRes = await query(
-        `SELECT r.keyword, r.match_type, t.body
+        `SELECT r.keyword, r.match_type, r.reply_template_key, t.body
          FROM public.wa_autoreply_rules r
          LEFT JOIN public.wa_templates t ON r.reply_template_key = t.key
-         WHERE r.is_active = true`
+         WHERE r.is_active = true
+         ORDER BY r.created_at ASC`
       );
 
       const normalizedText = text.toLowerCase().trim();
 
       for (const rule of rulesRes.rows) {
-        const keyword = (rule.keyword || '').toLowerCase().trim();
-        const matches =
-          rule.match_type === 'exact'
-            ? normalizedText === keyword
-            : normalizedText.includes(keyword);
+        const keyword = (rule.keyword || '').trim();
+        if (!keyword) continue;
 
-        if (matches && rule.body) {
-          console.log(`[Baileys] Auto-reply triggered for keyword "${rule.keyword}" to ${phone}`);
-          // Queue auto-reply message with priority 2
-          await query(
-            `INSERT INTO public.wa_messages (direction, phone, body, priority, status, created_at)
-             VALUES ('outbound', $1, $2, 2, 'queued', NOW())`,
-            [phone, rule.body]
-          );
+        let matches = false;
+        if (rule.match_type === 'exact') {
+          matches = normalizedText === keyword.toLowerCase();
+        } else if (rule.match_type === 'regex') {
+          try {
+            const re = new RegExp(keyword, 'i');
+            matches = re.test(text);
+          } catch (regexErr) {
+            console.warn(`[Baileys] Invalid regex in auto-reply rule "${keyword}":`, regexErr);
+          }
+        } else {
+          // 'contains'
+          matches = normalizedText.includes(keyword.toLowerCase());
+        }
+
+        if (matches) {
+          // Resolve buyer name from CRM or WhatsApp pushName
+          let buyerName = pushName || 'Valued Customer';
+          try {
+            const last10 = senderPhone.replace(/\D/g, '').slice(-10);
+            if (last10.length === 10) {
+              const crmRes = await query(
+                `SELECT name FROM public.customers_crm WHERE phone LIKE $1 LIMIT 1`,
+                [`%${last10}`]
+              );
+              if (crmRes.rows[0]?.name) {
+                buyerName = crmRes.rows[0].name;
+              }
+            }
+          } catch {}
+
+          const defaultGreeting =
+            `Namaste {{name}}! Welcome to *TOLAND Denim Pvt. Ltd.* (Sheikhpura, Bihar).\n\n` +
+            `• Shop Factory-Direct Denim: https://toland-web.vercel.app/products\n` +
+            `• Track Your Order: https://toland-web.vercel.app/track-order\n` +
+            `• Bulk Wholesale Rates (50+ pcs): https://toland-web.vercel.app/b2b\n\n` +
+            `Our factory desk team will assist you shortly!`;
+
+          const rawBody = rule.body || defaultGreeting;
+          const resolvedBody = rawBody
+            .replace(/\{\{\s*name\s*\}\}/gi, buyerName)
+            .replace(/\{\{\s*phone\s*\}\}/gi, senderPhone);
+
+          console.log(`[Baileys] Auto-reply matched (${rule.match_type}: "${rule.keyword}") for ${senderPhone}`);
+
+          if (this.isConnected()) {
+            await this.sendPresence(replyTarget, 'composing');
+            await new Promise((r) => setTimeout(r, 1200));
+            const sendRes = await this.sendMessage(replyTarget, resolvedBody);
+
+            await query(
+              `INSERT INTO public.wa_messages (direction, phone, body, priority, template_key, status, sent_at, metadata, created_at)
+               VALUES ('outbound', $1, $2, 2, $3, $4, $5, $6::jsonb, NOW())`,
+              [
+                senderPhone,
+                resolvedBody,
+                rule.reply_template_key || null,
+                sendRes.success ? 'sent' : 'queued',
+                sendRes.success ? new Date() : null,
+                JSON.stringify({
+                  auto_reply_rule: rule.keyword,
+                  provider_message_id: sendRes.messageId || null,
+                }),
+              ]
+            );
+          } else {
+            await query(
+              `INSERT INTO public.wa_messages (direction, phone, body, priority, template_key, status, metadata, created_at)
+               VALUES ('outbound', $1, $2, 2, $3, 'queued', $4::jsonb, NOW())`,
+              [
+                senderPhone,
+                resolvedBody,
+                rule.reply_template_key || null,
+                JSON.stringify({ auto_reply_rule: rule.keyword }),
+              ]
+            );
+          }
           break;
         }
       }

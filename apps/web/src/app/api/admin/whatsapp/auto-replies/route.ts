@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { isAdminOrStaff, isStrictAdmin } from '@/lib/admin-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,7 +11,7 @@ export async function GET(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user || (user.app_metadata?.role !== 'admin' && user.app_metadata?.role !== 'staff')) {
+    if (!isAdminOrStaff(user)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -35,7 +36,7 @@ export async function POST(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user || user.app_metadata?.role !== 'admin') {
+    if (!isStrictAdmin(user)) {
       return NextResponse.json({ error: 'Unauthorized: Admin role required' }, { status: 401 });
     }
 
@@ -46,9 +47,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Trigger keyword is required' }, { status: 400 });
     }
 
+    const normalizedKeyword = match_type === 'regex' ? keyword.trim() : keyword.trim().toUpperCase();
+
     const { data: rule, error } = await (supabase.from('wa_autoreply_rules') as any)
       .insert({
-        keyword: keyword.trim().toUpperCase(),
+        keyword: normalizedKeyword,
         match_type,
         reply_template_key: reply_template_key || null,
         is_active: Boolean(is_active),
@@ -72,7 +75,7 @@ export async function PUT(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user || user.app_metadata?.role !== 'admin') {
+    if (!isStrictAdmin(user)) {
       return NextResponse.json({ error: 'Unauthorized: Admin role required' }, { status: 401 });
     }
 
@@ -108,7 +111,7 @@ export async function DELETE(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user || user.app_metadata?.role !== 'admin') {
+    if (!isStrictAdmin(user)) {
       return NextResponse.json({ error: 'Unauthorized: Admin role required' }, { status: 401 });
     }
 

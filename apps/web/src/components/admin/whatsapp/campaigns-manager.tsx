@@ -37,9 +37,10 @@ interface TemplateOption {
 interface CampaignsManagerProps {
   campaigns: CampaignItem[];
   templates: TemplateOption[];
+  statsByCampaign?: Record<string, { total: number; sent: number; queued: number; failed: number }>;
 }
 
-export function CampaignsManager({ campaigns, templates }: CampaignsManagerProps) {
+export function CampaignsManager({ campaigns, templates, statsByCampaign = {} }: CampaignsManagerProps) {
   const router = useRouter();
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -50,6 +51,7 @@ export function CampaignsManager({ campaigns, templates }: CampaignsManagerProps
   const [loading, setLoading] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [bannerMsg, setBannerMsg] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
   const openCreateModal = () => {
@@ -87,6 +89,11 @@ export function CampaignsManager({ campaigns, templates }: CampaignsManagerProps
       if (!res.ok) throw new Error(data.error || 'Failed to create campaign');
 
       setModalOpen(false);
+      if (typeof data.queuedCount === 'number' && data.queuedCount > 0) {
+        setBannerMsg(`Campaign "${name}" launched! Queued ${data.queuedCount} personalized WhatsApp messages.`);
+      } else {
+        setBannerMsg(`Campaign "${name}" scheduled/saved successfully.`);
+      }
       router.refresh();
     } catch (err: any) {
       setError(err?.message || 'Error launching campaign');
@@ -105,6 +112,9 @@ export function CampaignsManager({ campaigns, templates }: CampaignsManagerProps
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to update status');
+      if (typeof data.queuedCount === 'number' && data.queuedCount > 0) {
+        setBannerMsg(`Queued ${data.queuedCount} campaign messages into WhatsApp Anti-Ban queue!`);
+      }
       router.refresh();
     } catch (err: any) {
       alert(err?.message || 'Error updating campaign');
@@ -142,9 +152,41 @@ export function CampaignsManager({ campaigns, templates }: CampaignsManagerProps
         </button>
       </div>
 
+      {/* Banner Notification + Search Bar */}
+      {bannerMsg && (
+        <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-semibold flex items-center justify-between">
+          <span className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>{bannerMsg}</span>
+          </span>
+          <button type="button" onClick={() => setBannerMsg(null)} className="text-emerald-700 hover:underline">
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      <div className="bg-white p-3.5 rounded-xl border border-[#CFE0D5] shadow-xs">
+        <div className="relative max-w-sm">
+          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search campaign title or template..."
+            className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-[#CFE0D5] bg-[#F0F7F2]/40 focus:outline-none focus:ring-1 focus:ring-[#14532D]"
+          />
+        </div>
+      </div>
+
       {/* Campaigns List */}
       <div className="space-y-4">
+        {filteredCampaigns.length === 0 && (
+          <div className="bg-white p-10 rounded-xl border border-[#CFE0D5] text-center text-xs text-gray-500">
+            No broadcast campaigns created yet. Click &quot;Launch Campaign&quot; to message VIP or Wholesale buyers.
+          </div>
+        )}
         {filteredCampaigns.map((camp) => {
+          const campStats = statsByCampaign[camp.id];
           const statusColors: Record<string, string> = {
             running: 'bg-emerald-100 text-emerald-800 border-emerald-300',
             scheduled: 'bg-blue-100 text-blue-800 border-blue-300',
@@ -196,6 +238,11 @@ export function CampaignsManager({ campaigns, templates }: CampaignsManagerProps
                         month: 'short',
                         year: 'numeric',
                       })}
+                    </span>
+                  )}
+                  {campStats && (
+                    <span className="inline-flex items-center gap-1.5 font-mono text-[11px] bg-[#F0F7F2] text-[#14532D] px-2 py-0.5 rounded border border-[#CFE0D5]">
+                      Sent: {campStats.sent}/{campStats.total} · Queued: {campStats.queued}
                     </span>
                   )}
                 </div>

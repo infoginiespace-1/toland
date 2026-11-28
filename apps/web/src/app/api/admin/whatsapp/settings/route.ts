@@ -1,20 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { isAdminOrStaff, isStrictAdmin, triggerBridgeEndpoint } from '@/lib/admin-auth';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const supabase = createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user || (user.app_metadata?.role !== 'admin' && user.app_metadata?.role !== 'staff')) {
+    if (!isAdminOrStaff(user)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: settings, error } = await supabase
+    const adminDb = createAdminClient();
+    const { data: settings, error } = await adminDb
       .from('wa_settings')
       .select('*')
       .limit(1)
@@ -36,7 +39,7 @@ export async function PUT(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user || user.app_metadata?.role !== 'admin') {
+    if (!isStrictAdmin(user)) {
       return NextResponse.json({ error: 'Unauthorized: Admin role required' }, { status: 401 });
     }
 
@@ -52,6 +55,9 @@ export async function PUT(request: NextRequest) {
       warmup_enabled,
       warmup_day,
       autoreply_enabled,
+      queue_paused,
+      failure_streak,
+      fallback_to_cloud_api,
     } = body;
 
     const payload: any = {
@@ -67,10 +73,14 @@ export async function PUT(request: NextRequest) {
     if (warmup_enabled !== undefined) payload.warmup_enabled = Boolean(warmup_enabled);
     if (warmup_day !== undefined) payload.warmup_day = Number(warmup_day);
     if (autoreply_enabled !== undefined) payload.autoreply_enabled = Boolean(autoreply_enabled);
+    if (queue_paused !== undefined) payload.queue_paused = Boolean(queue_paused);
+    if (failure_streak !== undefined) payload.failure_streak = Number(failure_streak);
+    if (fallback_to_cloud_api !== undefined) payload.fallback_to_cloud_api = Boolean(fallback_to_cloud_api);
 
+    const adminDb = createAdminClient();
     let result;
     if (id) {
-      const { data, error } = await (supabase.from('wa_settings') as any)
+      const { data, error } = await (adminDb.from('wa_settings') as any)
         .update(payload)
         .eq('id', id)
         .select('*')
@@ -78,12 +88,18 @@ export async function PUT(request: NextRequest) {
       if (error) throw error;
       result = data;
     } else {
-      const { data, error } = await (supabase.from('wa_settings') as any)
+      const { data, error } = await (adminDb.from('wa_settings') as any)
         .insert(payload)
         .select('*')
         .single();
       if (error) throw error;
       result = data;
+    }
+
+    if (queue_paused === false) {
+      await triggerBridgeEndpoint('/resume');
+    } else if (queue_paused === true) {
+      await triggerBridgeEndpoint('/pause');
     }
 
     return NextResponse.json({ success: true, settings: result });
