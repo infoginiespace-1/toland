@@ -1,6 +1,7 @@
 import React, { Suspense } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import { QuickWishlistButton } from '@/components/storefront/quick-wishlist-button';
 import {
   Filter,
   ArrowUpDown,
@@ -384,45 +385,61 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
                     className="group rounded-2xl bg-surface-alt border border-border hover:border-primary/70 hover:shadow-lg transition-all flex flex-col justify-between overflow-hidden"
                   >
                     {/* Visual Container */}
-                    <Link
-                      href={`/products/${product.slug}`}
-                      className="relative aspect-4/5 bg-surface border-b border-border overflow-hidden block"
-                    >
+                    <div className="relative aspect-4/5 bg-surface border-b border-border overflow-hidden">
                       {discount > 0 && (
-                        <span className="absolute top-3 left-3 z-10 px-2 py-0.5 rounded text-3xs font-extrabold uppercase bg-danger text-white shadow-xs">
+                        <span className="absolute top-3 left-3 z-10 px-2 py-0.5 rounded-full text-3xs font-extrabold uppercase bg-danger text-white shadow-sm pointer-events-none">
                           {discount}% OFF
                         </span>
                       )}
 
-                      <span className="absolute top-3 right-3 z-10 px-2 py-0.5 rounded text-3xs font-bold uppercase bg-surface/90 backdrop-blur-xs text-text border border-border">
-                        {product.category?.name || 'Denim'}
-                      </span>
+                      <QuickWishlistButton
+                        item={{
+                          productId: product.id,
+                          name: product.name,
+                          slug: product.slug,
+                          price: Number(product.base_price),
+                          mrp: product.mrp ? Number(product.mrp) : undefined,
+                          image: product.images?.[0]?.path,
+                          category: product.category?.name,
+                        }}
+                        className="absolute top-3 right-3 z-20"
+                      />
 
-                      {product.images && product.images.length > 0 ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={product.images[0].path}
-                          alt={product.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-gradient-to-br from-surface to-surface-alt">
-                          <div className="w-20 h-20 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary mb-3 group-hover:scale-105 transition-transform">
-                            <Layers className="w-10 h-10" />
+                      <Link
+                        href={`/products/${product.slug}`}
+                        className="block w-full h-full"
+                      >
+                        {product.images && product.images.length > 0 ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={product.images[0].path}
+                            alt={product.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-gradient-to-br from-surface to-surface-alt">
+                            <div className="w-20 h-20 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary mb-3 group-hover:scale-105 transition-transform">
+                              <Layers className="w-10 h-10" />
+                            </div>
+                            <span className="text-xs font-bold text-text line-clamp-1">{product.name}</span>
+                            <span className="text-3xs text-muted font-medium mt-1">100% Ring-Spun Cotton</span>
                           </div>
-                          <span className="text-xs font-bold text-text line-clamp-1">{product.name}</span>
-                          <span className="text-3xs text-muted font-medium mt-1">100% Ring-Spun Cotton</span>
-                        </div>
-                      )}
-                    </Link>
+                        )}
+                      </Link>
+                    </div>
 
                     {/* Details */}
                     <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
                       <div>
-                        <h3 className="text-sm font-bold text-text line-clamp-2 group-hover:text-primary transition-colors">
-                          {product.name}
-                        </h3>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-primary block mb-1">
+                          {product.category?.name || 'Denim'}
+                        </span>
+                        <Link href={`/products/${product.slug}`} className="block">
+                          <h3 className="text-sm font-bold text-text line-clamp-2 group-hover:text-primary transition-colors">
+                            {product.name}
+                          </h3>
+                        </Link>
 
                         {/* Sizes Pill list */}
                         <div className="flex flex-wrap gap-1 mt-2.5">

@@ -53,13 +53,12 @@ export function StorefrontNavbar() {
   const pathname = usePathname();
   const router = useRouter();
   const { itemCount } = useCart();
-  const { itemCount: wishlistCount } = useWishlist();
+  const { itemCount: wishlistCount, isDrawerOpen: wishlistOpen, openDrawer: openWishlist, closeDrawer: closeWishlist } = useWishlist();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
-  const [wishlistOpen, setWishlistOpen] = useState(false);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const categoriesRef = useRef<HTMLDivElement>(null);
@@ -175,7 +174,8 @@ export function StorefrontNavbar() {
     'Account';
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-border shadow-subtle">
+    <>
+      <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-border shadow-subtle">
       {/* Top Announcement Ribbon - Continuous Smooth Ticker */}
       <div className="bg-primary text-white text-[11px] font-medium py-1.5 overflow-hidden group-marquee border-b border-primary-hover relative cursor-default">
         <div className="animate-marquee-infinite flex items-center gap-10 whitespace-nowrap">
@@ -338,14 +338,18 @@ export function StorefrontNavbar() {
             {/* Wishlist Button */}
             <button
               type="button"
-              onClick={() => setWishlistOpen(true)}
-              className="relative p-2 rounded-full text-slate-700 hover:bg-surface-alt transition-colors cursor-pointer"
+              onClick={openWishlist}
+              className="relative p-2 rounded-full text-slate-700 hover:bg-rose-50 hover:text-rose-600 transition-colors cursor-pointer"
               aria-label="Saved Wishlist"
               title="Saved Wishlist"
             >
-              <Heart className="w-4 h-4 sm:w-[18px] sm:h-[18px] text-rose-500" />
+              <Heart
+                className={`w-4 h-4 sm:w-[18px] sm:h-[18px] text-rose-500 transition-transform ${
+                  wishlistCount > 0 ? 'fill-rose-500' : ''
+                }`}
+              />
               {wishlistCount > 0 && (
-                <span className="absolute top-0.5 right-0.5 bg-rose-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
+                <span className="absolute top-0.5 right-0.5 bg-rose-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
                   {wishlistCount}
                 </span>
               )}
@@ -568,18 +572,19 @@ export function StorefrontNavbar() {
           </div>
         </div>
       )}
+      </header>
 
       {/* Global Live Search Modal */}
       <SearchModal isOpen={searchModalOpen} onClose={() => setSearchModalOpen(false)} />
 
-      {/* Global Saved Wishlist Slide-Over */}
-      <WishlistDrawer isOpen={wishlistOpen} onClose={() => setWishlistOpen(false)} />
+      {/* Global Saved Wishlist Slide-Over (Portaled to document.body) */}
+      <WishlistDrawer isOpen={wishlistOpen} onClose={closeWishlist} />
 
       {/* Mobile Sticky Bottom App Bar */}
       <MobileBottomNav
         onOpenSearch={() => setSearchModalOpen(true)}
-        onOpenWishlist={() => setWishlistOpen(true)}
+        onOpenWishlist={openWishlist}
       />
-    </header>
+    </>
   );
 }

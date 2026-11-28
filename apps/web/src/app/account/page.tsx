@@ -21,8 +21,11 @@ import {
   Loader2,
   ExternalLink,
   FileText,
+  Heart,
+  Trash2,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { useWishlist } from '@/context/wishlist-context';
 
 export default function AccountPage() {
   const router = useRouter();
@@ -31,7 +34,8 @@ export default function AccountPage() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'orders' | 'address' | 'support'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'wishlist' | 'address' | 'support'>('orders');
+  const { items: wishlistItems, removeFromWishlist, openDrawer: openWishlistDrawer } = useWishlist();
 
   useEffect(() => {
     async function loadAccount() {
@@ -201,6 +205,18 @@ export default function AccountPage() {
         </button>
 
         <button
+          onClick={() => setActiveTab('wishlist')}
+          className={`pb-3 text-xs font-bold transition-colors flex items-center gap-2 border-b-2 -mb-[5px] cursor-pointer ${
+            activeTab === 'wishlist'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted hover:text-text'
+          }`}
+        >
+          <Heart className="w-4 h-4 text-rose-500" />
+          <span>Saved Wishlist ({wishlistItems.length})</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('address')}
           className={`pb-3 text-xs font-bold transition-colors flex items-center gap-2 border-b-2 -mb-[5px] ${
             activeTab === 'address'
@@ -360,7 +376,115 @@ export default function AccountPage() {
         </div>
       )}
 
-      {/* Tab 2: Default Address */}
+      {/* Tab 2: Saved Wishlist */}
+      {activeTab === 'wishlist' && (
+        <div className="space-y-4">
+          {wishlistItems.length === 0 ? (
+            <div className="py-16 text-center space-y-3 bg-surface-alt rounded-3xl border border-border">
+              <Heart className="w-12 h-12 text-rose-300 mx-auto" />
+              <h3 className="text-sm font-bold text-text">Your Wishlist is Empty</h3>
+              <p className="text-xs text-muted max-w-sm mx-auto">
+                Save your favorite TOLAND jeans and jackets while browsing to pick sizes and order later.
+              </p>
+              <div className="pt-2">
+                <Link
+                  href="/products"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-white text-xs font-bold uppercase tracking-wider"
+                >
+                  <span>Browse Denim Catalog</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-surface-alt border border-border">
+                <p className="text-xs text-muted">
+                  You have <strong className="text-text">{wishlistItems.length}</strong> saved{' '}
+                  {wishlistItems.length === 1 ? 'item' : 'items'} in your shortlist.
+                </p>
+                <button
+                  type="button"
+                  onClick={openWishlistDrawer}
+                  className="px-4 py-2 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <ShoppingBag className="w-3.5 h-3.5" />
+                  <span>Quick-Pick Size &amp; Move to Bag</span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {wishlistItems.map((item) => (
+                  <div
+                    key={item.productId}
+                    className="p-4 rounded-2xl bg-white border border-border shadow-card flex items-center gap-3.5"
+                  >
+                    <Link
+                      href={`/products/${item.slug || item.productId}`}
+                      className="w-16 h-20 rounded-xl bg-surface-alt border border-border overflow-hidden shrink-0 block"
+                    >
+                      {item.image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-muted">
+                          TOLAND
+                        </div>
+                      )}
+                    </Link>
+
+                    <div className="flex-1 min-w-0 space-y-1">
+                      {item.category && (
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-primary block truncate">
+                          {item.category}
+                        </span>
+                      )}
+                      <Link
+                        href={`/products/${item.slug || item.productId}`}
+                        className="text-xs font-bold text-text hover:text-primary line-clamp-1 block"
+                      >
+                        {item.name}
+                      </Link>
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-xs font-mono font-bold text-slate-900">
+                          ₹{Number(item.price).toLocaleString('en-IN')}
+                        </span>
+                        {item.mrp && item.mrp > item.price && (
+                          <span className="text-[10px] text-muted line-through font-mono">
+                            ₹{Number(item.mrp).toLocaleString('en-IN')}
+                          </span>
+                        )}
+                      </div>
+                      <div className="pt-1 flex items-center gap-2">
+                        <Link
+                          href={`/products/${item.slug || item.productId}`}
+                          className="text-[11px] font-bold text-primary hover:underline"
+                        >
+                          Select Size &rarr;
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => removeFromWishlist(item.productId)}
+                          className="ml-auto p-1 rounded-lg text-muted hover:text-danger hover:bg-danger/10 transition-colors cursor-pointer"
+                          title="Remove from wishlist"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Tab 3: Default Address */}
       {activeTab === 'address' && (
         <div className="p-6 rounded-3xl bg-white border border-border shadow-card space-y-4 max-w-xl">
           <div className="flex items-center gap-2 pb-3 border-b border-border">
